@@ -1,0 +1,18 @@
+export const foods = [
+  { name: '紅燒牛肉麵', category: '台式', price: 180, area: '中山', meal: ['午餐', '晚餐'] },
+  { name: '雞肉飯', category: '台式', price: 95, area: '大同', meal: ['午餐', '晚餐'] },
+  { name: '麻醬麵＋餛飩湯', category: '台式', price: 130, area: '松山', meal: ['午餐', '晚餐'] },
+  { name: '豚骨拉麵', category: '日式', price: 280, area: '信義', meal: ['午餐', '晚餐'] },
+  { name: '炙燒鮭魚丼', category: '日式', price: 360, area: '中山', meal: ['午餐', '晚餐'] },
+  { name: '日式咖哩飯', category: '日式', price: 210, area: '大安', meal: ['午餐', '晚餐'] },
+  { name: '韓式豆腐鍋', category: '韓式', price: 250, area: '信義', meal: ['午餐', '晚餐'] },
+  { name: '韓式炸雞', category: '韓式', price: 390, area: '大安', meal: ['晚餐', '宵夜'] },
+  { name: '越南牛肉河粉', category: '東南亞', price: 190, area: '中山', meal: ['午餐', '晚餐'] },
+  { name: '打拋豬飯', category: '東南亞', price: 160, area: '松山', meal: ['午餐', '晚餐'] },
+  { name: '義大利肉醬麵', category: '西式', price: 260, area: '大安', meal: ['午餐', '晚餐'] },
+  { name: '起司牛肉漢堡', category: '美式', price: 320, area: '信義', meal: ['午餐', '晚餐'] },
+  { name: '酪梨雞肉沙拉', category: '輕食', price: 220, area: '大安', meal: ['早餐', '午餐'] },
+  { name: '火腿蛋吐司', category: '早餐', price: 70, area: '松山', meal: ['早餐'] },
+  { name: '鹽酥雞', category: '台式', price: 150, area: '大同', meal: ['晚餐', '宵夜'] },
+  { name: '麻辣鍋', category: '鍋物', price: 480, area: '中山', meal: ['晚餐', '宵夜'] },
+]
