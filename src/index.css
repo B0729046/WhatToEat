@@ -28,6 +28,7 @@ body { background:#100d0b }
 .orb-one { background:#fb7185;left:-130px;top:4% }.orb-two { background:#f59e0b;right:-130px;bottom:18% }
 .hero { max-width:680px }.eyebrow { padding:8px 13px;border:1px solid rgba(251,191,36,.25);border-radius:999px;background:rgba(251,191,36,.07);letter-spacing:.16em }
 h1 { margin:20px 0 14px;font-size:clamp(3.4rem,7vw,5.5rem);letter-spacing:-.065em;background:linear-gradient(115deg,#fffdf7 15%,#fed7aa 54%,#fbbf24) }
+h1 { display:inline-block;background-clip:text;-webkit-background-clip:text;-webkit-text-fill-color:transparent }
 .hero p { color:#b9aea5;line-height:1.8 }
 .glass-card { width:min(100%,920px);margin-top:38px;padding:28px;border-color:rgba(253,230,138,.15);border-radius:30px;background:linear-gradient(145deg,rgba(50,37,28,.84),rgba(19,16,14,.8));box-shadow:0 36px 100px rgba(0,0,0,.45),inset 0 1px rgba(255,255,255,.1) }
 .filter-group>span { color:#a99c91 }.select-wrap select { min-height:44px;border-color:rgba(255,255,255,.12);background:#171311 }.match-count { margin-top:17px }
