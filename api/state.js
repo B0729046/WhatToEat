@@ -7,6 +7,8 @@ const KEYS = {
   votes: "whattoeat:votes",
   history: "whattoeat:history",
 };
+const USERS = ["威威", "小蘇蘇"];
+const voteKey = (user) => `whattoeat:votes:${user}`;
 function send(res, status, body) {
   res
     .status(status)
@@ -84,15 +86,22 @@ async function restaurantFromGoogleMaps(mapUrl) {
   });
 }
 async function getState() {
-  const [rawRestaurants, rawVotes, rawHistory] = await Promise.all([
+  const [rawRestaurants, weiVotes, suVotes, rawHistory] = await Promise.all([
     redis("HGETALL", KEYS.restaurants),
-    redis("HGETALL", KEYS.votes),
+    redis("SMEMBERS", voteKey("威威")),
+    redis("SMEMBERS", voteKey("小蘇蘇")),
     redis("LRANGE", KEYS.history, 0, 49),
   ]);
-  const votes = pairs(rawVotes);
+  const selections = {
+    威威: new Set(weiVotes || []),
+    小蘇蘇: new Set(suVotes || []),
+  };
   const restaurants = Object.values(pairs(rawRestaurants))
     .map(JSON.parse)
-    .map((item) => ({ ...item, votes: Number(votes[item.id] || 0) }))
+    .map((item) => {
+      const voters = USERS.filter((user) => selections[user].has(item.id));
+      return { ...item, voters, votes: voters.length };
+    })
     .sort(
       (a, b) => b.votes - a.votes || a.name.localeCompare(b.name, "zh-Hant"),
     );
@@ -154,37 +163,6 @@ export default async function handler(req, res) {
       );
       return send(res, 201, { restaurant });
     }
-    if (body.action === "batchAdd") {
-      const input = Array.isArray(body.restaurants)
-        ? body.restaurants.slice(0, 100)
-        : [];
-      if (!input.length) return send(res, 400, { error: "沒有可匯入的餐廳" });
-      const restaurants = input.map((item) =>
-        cleanRestaurant({
-          category: "未分類",
-          area: "未設定",
-          price: 0,
-          meal: ["早餐", "午餐", "晚餐", "宵夜"],
-          ...item,
-        }),
-      );
-      await redis(
-        "HSET",
-        KEYS.restaurants,
-        ...restaurants.flatMap((item) => [item.id, JSON.stringify(item)]),
-      );
-      return send(res, 201, { count: restaurants.length });
-    }
-    if (body.action === "add") {
-      const restaurant = cleanRestaurant(body.restaurant || {});
-      await redis(
-        "HSET",
-        KEYS.restaurants,
-        restaurant.id,
-        JSON.stringify(restaurant),
-      );
-      return send(res, 201, { restaurant });
-    }
     const id = String(body.id || "");
     if (!id) return send(res, 400, { error: "缺少餐廳 ID" });
     const raw = await redis("HGET", KEYS.restaurants, id);
@@ -194,20 +172,28 @@ export default async function handler(req, res) {
       await Promise.all([
         redis("HDEL", KEYS.restaurants, id),
         redis("HDEL", KEYS.votes, id),
+        ...USERS.map((user) => redis("SREM", voteKey(user), id)),
       ]);
       return send(res, 200, { ok: true });
     }
     if (body.action === "vote") {
-      const votes = Number(await redis("HINCRBY", KEYS.votes, id, 1));
+      const voter = String(body.voter || "");
+      if (!USERS.includes(voter))
+        return send(res, 400, { error: "請選擇威威或小蘇蘇" });
+      const wasSelected =
+        Number(await redis("SISMEMBER", voteKey(voter), id)) === 1;
+      await redis(wasSelected ? "SREM" : "SADD", voteKey(voter), id);
       const record = {
         id: crypto.randomUUID(),
         restaurantId: id,
         name: restaurant.name,
+        voter,
+        action: wasSelected ? "remove" : "add",
         createdAt: new Date().toISOString(),
       };
       await redis("LPUSH", KEYS.history, JSON.stringify(record));
       await redis("LTRIM", KEYS.history, 0, 49);
-      return send(res, 200, { votes, record });
+      return send(res, 200, { selected: !wasSelected, record });
     }
     return send(res, 400, { error: "不支援的操作" });
   } catch (error) {

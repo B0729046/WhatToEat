@@ -4,23 +4,14 @@ import {
   ExternalLink,
   History,
   MapPin,
-  Plus,
   RotateCcw,
   Sparkles,
   Trash2,
   Trophy,
   Utensils,
 } from "lucide-react";
-const ALL = "不限",
-  MEALS = ["早餐", "午餐", "晚餐", "宵夜"],
-  EMPTY = {
-    name: "",
-    category: "",
-    price: "",
-    area: "",
-    mapUrl: "",
-    meal: ["午餐", "晚餐"],
-  };
+const USERS = ["威威", "小蘇蘇"],
+  ALL = "不限";
 function Filter({ label, value, options, onChange }) {
   return (
     <label className="filter-group">
@@ -49,24 +40,15 @@ async function api(options) {
   if (!r.ok) throw Error(d.error || `共享資料 API 錯誤（HTTP ${r.status}）`);
   return d;
 }
-function Field({ name, form, setForm, ...props }) {
-  return (
-    <input
-      {...props}
-      value={form[name]}
-      onChange={(e) => setForm({ ...form, [name]: e.target.value })}
-    />
-  );
-}
 function QuickAdd({ mapLink, setMapLink, addFromMap, busy }) {
   return (
     <div className="panel quick-add-panel">
       <h2>
         <MapPin size={20} />
-        手機貼連結快速新增
+        新增餐廳
       </h2>
       <p className="panel-help">
-        在 Google Maps 點「分享 → 複製連結」，貼到這裡即可自動取得餐廳名稱。
+        貼上 Google Maps 餐廳連結，自動取得名稱並加入共享清單。
       </p>
       <form className="quick-add-form" onSubmit={addFromMap}>
         <input
@@ -83,102 +65,27 @@ function QuickAdd({ mapLink, setMapLink, addFromMap, busy }) {
     </div>
   );
 }
-function RestaurantForm({ form, setForm, add, busy }) {
+function VoteButtons({ restaurant, vote, busy }) {
   return (
-    <div className="panel">
-      <h2>
-        <Plus size={20} />
-        新增餐廳
-      </h2>
-      <form className="restaurant-form" onSubmit={add}>
-        <Field
-          required
-          name="name"
-          placeholder="餐廳名稱"
-          {...{ form, setForm }}
-        />
-        <div className="form-row">
-          <Field
-            required
-            name="category"
-            placeholder="料理類型"
-            {...{ form, setForm }}
-          />
-          <Field
-            required
-            name="area"
-            placeholder="地區"
-            {...{ form, setForm }}
-          />
-        </div>
-        <Field
-          required
-          type="number"
-          min="0"
-          name="price"
-          placeholder="每人預算"
-          {...{ form, setForm }}
-        />
-        <Field
-          type="url"
-          name="mapUrl"
-          placeholder="Google Maps 連結（選填）"
-          {...{ form, setForm }}
-        />
-        <div className="meal-checks">
-          {MEALS.map((m) => (
-            <label key={m}>
-              <input
-                type="checkbox"
-                checked={form.meal.includes(m)}
-                onChange={() =>
-                  setForm({
-                    ...form,
-                    meal: form.meal.includes(m)
-                      ? form.meal.filter((x) => x !== m)
-                      : [...form.meal, m],
-                  })
-                }
-              />
-              {m}
-            </label>
-          ))}
-        </div>
-        <button className="secondary-button" disabled={busy}>
-          儲存到共享清單
-        </button>
-      </form>
+    <div className="vote-buttons">
+      {USERS.map((user) => {
+        const selected = restaurant.voters?.includes(user);
+        return (
+          <button
+            key={user}
+            className={selected ? "selected" : ""}
+            onClick={() => vote(restaurant, user)}
+            disabled={busy}
+          >
+            {selected ? "✓ " : "+ "}
+            {user}
+          </button>
+        );
+      })}
     </div>
   );
 }
-function BatchImport({ batch, setBatch, importBatch, busy }) {
-  return (
-    <div className="panel batch-panel">
-      <h2>
-        <Plus size={20} />
-        批次貼上 Google Maps 清單
-      </h2>
-      <p className="panel-help">
-        每行一間，格式為「餐廳名稱 | Google Maps 連結」
-      </p>
-      <textarea
-        value={batch}
-        onChange={(e) => setBatch(e.target.value)}
-        placeholder={
-          "鼎泰豐 | https://maps.app.goo.gl/xxxxx\n林東芳牛肉麵 | https://maps.app.goo.gl/yyyyy"
-        }
-      />
-      <button
-        className="secondary-button"
-        onClick={importBatch}
-        disabled={busy || !batch.trim()}
-      >
-        批次匯入共享清單
-      </button>
-    </div>
-  );
-}
-function Ranking({ restaurants, remove, busy }) {
+function Ranking({ restaurants, remove, vote, busy }) {
   return (
     <div className="panel">
       <h2>
@@ -194,6 +101,7 @@ function Ranking({ restaurants, remove, busy }) {
                 <small>
                   {x.category} · {x.area} · {x.votes} 票
                 </small>
+                <VoteButtons restaurant={x} {...{ vote, busy }} />
               </div>
               <div className="row-actions">
                 {x.mapUrl && (
@@ -235,7 +143,9 @@ function VoteHistory({ history }) {
           history.map((x) => (
             <div key={x.id}>
               <span>
-                投給 <strong>{x.name}</strong>
+                <strong>{x.voter || "匿名"}</strong>
+                {x.action === "remove" ? " 取消 " : " 投給 "}
+                <strong>{x.name}</strong>
               </span>
               <time dateTime={x.createdAt}>
                 {new Date(x.createdAt).toLocaleString("zh-TW")}
@@ -282,9 +192,10 @@ function Result({ result, rolling, restaurants, vote, busy }) {
       </div>
       {!rolling && (
         <div className="result-actions">
-          <button onClick={vote} disabled={busy}>
-            投它一票
-          </button>
+          <VoteButtons
+            restaurant={restaurants.find((x) => x.id === result.id) || result}
+            {...{ vote, busy }}
+          />
           {result.mapUrl && (
             <a href={result.mapUrl} target="_blank" rel="noreferrer">
               Google Maps <ExternalLink size={14} />
@@ -304,9 +215,7 @@ export default function App() {
       category: ALL,
       area: ALL,
     }),
-    [form, setForm] = useState(EMPTY),
     [mapLink, setMapLink] = useState(""),
-    [batch, setBatch] = useState(""),
     [result, setResult] = useState(null),
     [rolling, setRolling] = useState(false),
     [busy, setBusy] = useState(false),
@@ -391,40 +300,11 @@ export default function App() {
       setBusy(false);
     }
   };
-  const add = async (e) => {
-    e.preventDefault();
-    if (await mutate({ action: "add", restaurant: form })) setForm(EMPTY);
-  };
   const addFromMap = async (e) => {
     e.preventDefault();
     if (await mutate({ action: "addFromMapUrl", mapUrl: mapLink })) {
       setMapLink("");
       setMessage("已從 Google Maps 連結新增餐廳。");
-    }
-  };
-  const importBatch = async () => {
-    const lines = batch
-        .split(/\r?\n/)
-        .map((x) => x.trim())
-        .filter(Boolean),
-      restaurants = lines
-        .map((line) => {
-          const separator = line.indexOf("|");
-          return separator < 0
-            ? null
-            : {
-                name: line.slice(0, separator).trim(),
-                mapUrl: line.slice(separator + 1).trim(),
-              };
-        })
-        .filter((x) => x?.name && x.mapUrl);
-    if (!restaurants.length || restaurants.length !== lines.length) {
-      setError("每行都必須使用「餐廳名稱 | Google Maps 連結」格式");
-      return;
-    }
-    if (await mutate({ action: "batchAdd", restaurants })) {
-      setBatch("");
-      setMessage(`成功匯入 ${restaurants.length} 間餐廳。`);
     }
   };
   const remove = async (x) => {
@@ -435,9 +315,12 @@ export default function App() {
     )
       setResult(null);
   };
-  const vote = async () => {
-    if (result && (await mutate({ action: "vote", id: result.id })))
-      setMessage(`已投給 ${result.name}，大家都看得到這一票。`);
+  const vote = async (restaurant, voter) => {
+    const wasSelected = restaurant.voters?.includes(voter);
+    if (await mutate({ action: "vote", id: restaurant.id, voter }))
+      setMessage(
+        `${voter}${wasSelected ? "取消投給" : "投給"} ${restaurant.name}。`,
+      );
   };
   return (
     <main className="app-shell">
@@ -508,9 +391,7 @@ export default function App() {
       </section>
       <section className="community-grid">
         <QuickAdd {...{ mapLink, setMapLink, addFromMap, busy }} />
-        <RestaurantForm {...{ form, setForm, add, busy }} />
-        <BatchImport {...{ batch, setBatch, importBatch, busy }} />
-        <Ranking {...{ restaurants, remove, busy }} />
+        <Ranking {...{ restaurants, remove, vote, busy }} />
         <VoteHistory history={history} />
       </section>
       <footer>WHAT TO EAT · 所有人共享同一份名單與票數</footer>
