@@ -26,6 +26,13 @@ export default async function handler(req, res) {
     if (req.method === 'GET') return send(res, 200, await getState())
     if (req.method !== 'POST') return send(res, 405, { error: 'Method not allowed' })
     const body = req.body || {}
+    if (body.action === 'batchAdd') {
+      const input = Array.isArray(body.restaurants) ? body.restaurants.slice(0, 100) : []
+      if (!input.length) return send(res, 400, { error: '沒有可匯入的餐廳' })
+      const restaurants = input.map((item) => cleanRestaurant({ category: '未分類', area: '未設定', price: 0, meal: ['早餐', '午餐', '晚餐', '宵夜'], ...item }))
+      await redis('HSET', KEYS.restaurants, ...restaurants.flatMap((item) => [item.id, JSON.stringify(item)]))
+      return send(res, 201, { count: restaurants.length })
+    }
     if (body.action === 'add') { const restaurant = cleanRestaurant(body.restaurant || {}); await redis('HSET', KEYS.restaurants, restaurant.id, JSON.stringify(restaurant)); return send(res, 201, { restaurant }) }
     const id = String(body.id || ''); if (!id) return send(res, 400, { error: '缺少餐廳 ID' })
     const raw = await redis('HGET', KEYS.restaurants, id); if (!raw) return send(res, 404, { error: '找不到這間餐廳' }); const restaurant = JSON.parse(raw)
