@@ -1,28 +1,519 @@
-import { useEffect, useMemo, useState } from 'react'
-import { ChevronDown, ExternalLink, History, MapPin, Plus, RotateCcw, Sparkles, Trash2, Trophy, Utensils } from 'lucide-react'
-const ALL='不限', MEALS=['早餐','午餐','晚餐','宵夜'], EMPTY={name:'',category:'',price:'',area:'',mapUrl:'',meal:['午餐','晚餐']}
-function Filter({label,value,options,onChange}){return <label className="filter-group"><span>{label}</span><div className="select-wrap"><select value={value} onChange={e=>onChange(e.target.value)}><option>{ALL}</option>{options.map(x=><option key={x}>{x}</option>)}</select><ChevronDown size={16}/></div></label>}
-async function api(options){const r=await fetch('/api/state',options),text=await r.text();let d={};try{d=JSON.parse(text)}catch{d={}}if(!r.ok)throw Error(d.error||`共享資料 API 錯誤（HTTP ${r.status}）`);return d}
-function Field({name,form,setForm,...props}){return <input {...props} value={form[name]} onChange={e=>setForm({...form,[name]:e.target.value})}/>}
-function RestaurantForm({form,setForm,add,busy}){return <div className="panel"><h2><Plus size={20}/>新增餐廳</h2><form className="restaurant-form" onSubmit={add}><Field required name="name" placeholder="餐廳名稱" {...{form,setForm}}/><div className="form-row"><Field required name="category" placeholder="料理類型" {...{form,setForm}}/><Field required name="area" placeholder="地區" {...{form,setForm}}/></div><Field required type="number" min="0" name="price" placeholder="每人預算" {...{form,setForm}}/><Field type="url" name="mapUrl" placeholder="Google Maps 連結（選填）" {...{form,setForm}}/><div className="meal-checks">{MEALS.map(m=><label key={m}><input type="checkbox" checked={form.meal.includes(m)} onChange={()=>setForm({...form,meal:form.meal.includes(m)?form.meal.filter(x=>x!==m):[...form.meal,m]})}/>{m}</label>)}</div><button className="secondary-button" disabled={busy}>儲存到共享清單</button></form></div>}
-function BatchImport({batch,setBatch,importBatch,busy}){return <div className="panel batch-panel"><h2><Plus size={20}/>批次貼上 Google Maps 清單</h2><p className="panel-help">每行一間，格式為「餐廳名稱 | Google Maps 連結」</p><textarea value={batch} onChange={e=>setBatch(e.target.value)} placeholder={'鼎泰豐 | https://maps.app.goo.gl/xxxxx\n林東芳牛肉麵 | https://maps.app.goo.gl/yyyyy'}/><button className="secondary-button" onClick={importBatch} disabled={busy||!batch.trim()}>批次匯入共享清單</button></div>}
-function Ranking({restaurants,remove,busy}){return <div className="panel"><h2><Trophy size={20}/>共享排名</h2><div className="restaurant-list">{restaurants.length?restaurants.map(x=><div className="restaurant-row" key={x.id}><div><strong>{x.name}</strong><small>{x.category} · {x.area} · {x.votes} 票</small></div><div className="row-actions">{x.mapUrl&&<a href={x.mapUrl} target="_blank" rel="noreferrer" aria-label={`${x.name} Google Maps`}><MapPin size={17}/></a>}<button onClick={()=>remove(x)} disabled={busy} aria-label={`刪除 ${x.name}`}><Trash2 size={17}/></button></div></div>):<p className="muted">清單是空的，新增第一間餐廳吧。</p>}</div></div>}
-function VoteHistory({history}){return <div className="panel history-panel"><h2><History size={20}/>最近投票紀錄</h2><div className="history-list">{history.length?history.map(x=><div key={x.id}><span>投給 <strong>{x.name}</strong></span><time dateTime={x.createdAt}>{new Date(x.createdAt).toLocaleString('zh-TW')}</time></div>):<p className="muted">還沒有投票紀錄。</p>}</div></div>}
-function Result({result,rolling,restaurants,vote,busy}){if(!result)return <div className="empty-result"><Utensils size={34}/><span>{restaurants.length?'你的下一餐，正在平行宇宙等你':'目前還沒有餐廳，請先新增'}</span></div>;return <div className={`result-card ${rolling?'':'revealed'}`}><span className="result-label">{rolling?'搜尋美味中':'THE ONE'}</span><h2>{result.name}</h2><div className="result-meta"><span><Utensils size={15}/>{result.category}</span><span><MapPin size={15}/>{result.area}</span><span>約 NT$ {result.price}</span><span><Trophy size={15}/>{restaurants.find(x=>x.id===result.id)?.votes||0} 票</span></div>{!rolling&&<div className="result-actions"><button onClick={vote} disabled={busy}>投它一票</button>{result.mapUrl&&<a href={result.mapUrl} target="_blank" rel="noreferrer">Google Maps <ExternalLink size={14}/></a>}</div>}</div>}
-export default function App(){
- const [restaurants,setRestaurants]=useState([]),[history,setHistory]=useState([]),[filters,setFilters]=useState({meal:ALL,budget:ALL,category:ALL,area:ALL}),[form,setForm]=useState(EMPTY),[batch,setBatch]=useState(''),[result,setResult]=useState(null),[rolling,setRolling]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState(''),[message,setMessage]=useState('把選擇困難交給宇宙。')
- const load=async()=>{try{const d=await api();setRestaurants(d.restaurants);setHistory(d.history);setError('')}catch(e){setError(e.message)}}
- // Initial fetch synchronizes this client with the shared Redis state.
- // oxlint-disable-next-line react-hooks/exhaustive-deps
- useEffect(()=>{void load()},[])
- const options=useMemo(()=>({meal:[...new Set(restaurants.flatMap(x=>x.meal))],category:[...new Set(restaurants.map(x=>x.category))],area:[...new Set(restaurants.map(x=>x.area))]}),[restaurants])
- const matches=useMemo(()=>restaurants.filter(x=>(filters.meal===ALL||x.meal.includes(filters.meal))&&(filters.category===ALL||x.category===filters.category)&&(filters.area===ALL||x.area===filters.area)&&x.price<=(filters.budget===ALL?Infinity:Number(filters.budget))),[restaurants,filters])
- const update=(key,value)=>setFilters(old=>({...old,[key]:value}))
- const decide=()=>{if(rolling)return;if(!matches.length){setResult(null);setMessage(restaurants.length?'這條件太挑了，放寬一點吧！':'先在下方新增餐廳，就可以開始抽籤。');return}setRolling(true);setMessage('命運轉動中…');let ticks=0;const timer=setInterval(()=>{setResult(matches[Math.floor(Math.random()*matches.length)]);if(++ticks>=13){clearInterval(timer);setResult(matches[Math.floor(Math.random()*matches.length)]);setRolling(false);setMessage('命運已決定。喜歡就投它一票！')}},100)}
- const mutate=async payload=>{setBusy(true);setError('');try{await api({method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});await load();return true}catch(e){setError(e.message);return false}finally{setBusy(false)}}
- const add=async e=>{e.preventDefault();if(await mutate({action:'add',restaurant:form}))setForm(EMPTY)}
- const importBatch=async()=>{const lines=batch.split(/\r?\n/).map(x=>x.trim()).filter(Boolean),restaurants=lines.map(line=>{const separator=line.indexOf('|');return separator<0?null:{name:line.slice(0,separator).trim(),mapUrl:line.slice(separator+1).trim()}}).filter(x=>x?.name&&x.mapUrl);if(!restaurants.length||restaurants.length!==lines.length){setError('每行都必須使用「餐廳名稱 | Google Maps 連結」格式');return}if(await mutate({action:'batchAdd',restaurants})){setBatch('');setMessage(`成功匯入 ${restaurants.length} 間餐廳。`)}}
- const remove=async x=>{if(confirm(`確定刪除「${x.name}」？票數也會一起刪除。`)&&await mutate({action:'delete',id:x.id})&&result?.id===x.id)setResult(null)}
- const vote=async()=>{if(result&&await mutate({action:'vote',id:result.id}))setMessage(`已投給 ${result.name}，大家都看得到這一票。`)}
- return <main className="app-shell"><div className="orb orb-one"/><div className="orb orb-two"/><section className="hero"><div className="eyebrow"><Sparkles size={15}/> SHARED FOOD ORACLE</div><h1>今天<br className="mobile-break"/>吃什麼？</h1><p>新增口袋名單、一起投票，讓命運替大家選一餐。</p></section>{error&&<div className="error-banner" role="alert">{error}</div>}<section className="glass-card"><div className="filters"><Filter label="餐別" value={filters.meal} options={options.meal} onChange={v=>update('meal',v)}/><Filter label="預算" value={filters.budget} options={['150','250','350','500']} onChange={v=>update('budget',v)}/><Filter label="料理" value={filters.category} options={options.category} onChange={v=>update('category',v)}/><Filter label="地區" value={filters.area} options={options.area} onChange={v=>update('area',v)}/></div><div className="match-count">目前有 <strong>{matches.length}</strong> 個命運候選</div><div className="result-stage" aria-live="polite"><Result {...{result,rolling,restaurants,vote,busy}}/></div><p className="message">{message}</p><button className="decide-button" onClick={decide} disabled={rolling||busy}>{result&&!rolling?<RotateCcw size={21}/>:<Sparkles size={21}/>} {rolling?'正在召喚命運…':result?'再抽一次':'幫我決定'}</button></section><section className="community-grid"><RestaurantForm {...{form,setForm,add,busy}}/><BatchImport {...{batch,setBatch,importBatch,busy}}/><Ranking {...{restaurants,remove,busy}}/><VoteHistory history={history}/></section><footer>WHAT TO EAT · 所有人共享同一份名單與票數</footer></main>
+import { useEffect, useMemo, useState } from "react";
+import {
+  ChevronDown,
+  ExternalLink,
+  History,
+  MapPin,
+  Plus,
+  RotateCcw,
+  Sparkles,
+  Trash2,
+  Trophy,
+  Utensils,
+} from "lucide-react";
+const ALL = "不限",
+  MEALS = ["早餐", "午餐", "晚餐", "宵夜"],
+  EMPTY = {
+    name: "",
+    category: "",
+    price: "",
+    area: "",
+    mapUrl: "",
+    meal: ["午餐", "晚餐"],
+  };
+function Filter({ label, value, options, onChange }) {
+  return (
+    <label className="filter-group">
+      <span>{label}</span>
+      <div className="select-wrap">
+        <select value={value} onChange={(e) => onChange(e.target.value)}>
+          <option>{ALL}</option>
+          {options.map((x) => (
+            <option key={x}>{x}</option>
+          ))}
+        </select>
+        <ChevronDown size={16} />
+      </div>
+    </label>
+  );
+}
+async function api(options) {
+  const r = await fetch("/api/state", options),
+    text = await r.text();
+  let d = {};
+  try {
+    d = JSON.parse(text);
+  } catch {
+    d = {};
+  }
+  if (!r.ok) throw Error(d.error || `共享資料 API 錯誤（HTTP ${r.status}）`);
+  return d;
+}
+function Field({ name, form, setForm, ...props }) {
+  return (
+    <input
+      {...props}
+      value={form[name]}
+      onChange={(e) => setForm({ ...form, [name]: e.target.value })}
+    />
+  );
+}
+function QuickAdd({ mapLink, setMapLink, addFromMap, busy }) {
+  return (
+    <div className="panel quick-add-panel">
+      <h2>
+        <MapPin size={20} />
+        手機貼連結快速新增
+      </h2>
+      <p className="panel-help">
+        在 Google Maps 點「分享 → 複製連結」，貼到這裡即可自動取得餐廳名稱。
+      </p>
+      <form className="quick-add-form" onSubmit={addFromMap}>
+        <input
+          required
+          type="url"
+          value={mapLink}
+          onChange={(e) => setMapLink(e.target.value)}
+          placeholder="貼上 maps.app.goo.gl 餐廳連結"
+        />
+        <button className="secondary-button" disabled={busy || !mapLink.trim()}>
+          解析連結並新增
+        </button>
+      </form>
+    </div>
+  );
+}
+function RestaurantForm({ form, setForm, add, busy }) {
+  return (
+    <div className="panel">
+      <h2>
+        <Plus size={20} />
+        新增餐廳
+      </h2>
+      <form className="restaurant-form" onSubmit={add}>
+        <Field
+          required
+          name="name"
+          placeholder="餐廳名稱"
+          {...{ form, setForm }}
+        />
+        <div className="form-row">
+          <Field
+            required
+            name="category"
+            placeholder="料理類型"
+            {...{ form, setForm }}
+          />
+          <Field
+            required
+            name="area"
+            placeholder="地區"
+            {...{ form, setForm }}
+          />
+        </div>
+        <Field
+          required
+          type="number"
+          min="0"
+          name="price"
+          placeholder="每人預算"
+          {...{ form, setForm }}
+        />
+        <Field
+          type="url"
+          name="mapUrl"
+          placeholder="Google Maps 連結（選填）"
+          {...{ form, setForm }}
+        />
+        <div className="meal-checks">
+          {MEALS.map((m) => (
+            <label key={m}>
+              <input
+                type="checkbox"
+                checked={form.meal.includes(m)}
+                onChange={() =>
+                  setForm({
+                    ...form,
+                    meal: form.meal.includes(m)
+                      ? form.meal.filter((x) => x !== m)
+                      : [...form.meal, m],
+                  })
+                }
+              />
+              {m}
+            </label>
+          ))}
+        </div>
+        <button className="secondary-button" disabled={busy}>
+          儲存到共享清單
+        </button>
+      </form>
+    </div>
+  );
+}
+function BatchImport({ batch, setBatch, importBatch, busy }) {
+  return (
+    <div className="panel batch-panel">
+      <h2>
+        <Plus size={20} />
+        批次貼上 Google Maps 清單
+      </h2>
+      <p className="panel-help">
+        每行一間，格式為「餐廳名稱 | Google Maps 連結」
+      </p>
+      <textarea
+        value={batch}
+        onChange={(e) => setBatch(e.target.value)}
+        placeholder={
+          "鼎泰豐 | https://maps.app.goo.gl/xxxxx\n林東芳牛肉麵 | https://maps.app.goo.gl/yyyyy"
+        }
+      />
+      <button
+        className="secondary-button"
+        onClick={importBatch}
+        disabled={busy || !batch.trim()}
+      >
+        批次匯入共享清單
+      </button>
+    </div>
+  );
+}
+function Ranking({ restaurants, remove, busy }) {
+  return (
+    <div className="panel">
+      <h2>
+        <Trophy size={20} />
+        共享排名
+      </h2>
+      <div className="restaurant-list">
+        {restaurants.length ? (
+          restaurants.map((x) => (
+            <div className="restaurant-row" key={x.id}>
+              <div>
+                <strong>{x.name}</strong>
+                <small>
+                  {x.category} · {x.area} · {x.votes} 票
+                </small>
+              </div>
+              <div className="row-actions">
+                {x.mapUrl && (
+                  <a
+                    href={x.mapUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    aria-label={`${x.name} Google Maps`}
+                  >
+                    <MapPin size={17} />
+                  </a>
+                )}
+                <button
+                  onClick={() => remove(x)}
+                  disabled={busy}
+                  aria-label={`刪除 ${x.name}`}
+                >
+                  <Trash2 size={17} />
+                </button>
+              </div>
+            </div>
+          ))
+        ) : (
+          <p className="muted">清單是空的，新增第一間餐廳吧。</p>
+        )}
+      </div>
+    </div>
+  );
+}
+function VoteHistory({ history }) {
+  return (
+    <div className="panel history-panel">
+      <h2>
+        <History size={20} />
+        最近投票紀錄
+      </h2>
+      <div className="history-list">
+        {history.length ? (
+          history.map((x) => (
+            <div key={x.id}>
+              <span>
+                投給 <strong>{x.name}</strong>
+              </span>
+              <time dateTime={x.createdAt}>
+                {new Date(x.createdAt).toLocaleString("zh-TW")}
+              </time>
+            </div>
+          ))
+        ) : (
+          <p className="muted">還沒有投票紀錄。</p>
+        )}
+      </div>
+    </div>
+  );
+}
+function Result({ result, rolling, restaurants, vote, busy }) {
+  if (!result)
+    return (
+      <div className="empty-result">
+        <Utensils size={34} />
+        <span>
+          {restaurants.length
+            ? "你的下一餐，正在平行宇宙等你"
+            : "目前還沒有餐廳，請先新增"}
+        </span>
+      </div>
+    );
+  return (
+    <div className={`result-card ${rolling ? "" : "revealed"}`}>
+      <span className="result-label">{rolling ? "搜尋美味中" : "THE ONE"}</span>
+      <h2>{result.name}</h2>
+      <div className="result-meta">
+        <span>
+          <Utensils size={15} />
+          {result.category}
+        </span>
+        <span>
+          <MapPin size={15} />
+          {result.area}
+        </span>
+        <span>約 NT$ {result.price}</span>
+        <span>
+          <Trophy size={15} />
+          {restaurants.find((x) => x.id === result.id)?.votes || 0} 票
+        </span>
+      </div>
+      {!rolling && (
+        <div className="result-actions">
+          <button onClick={vote} disabled={busy}>
+            投它一票
+          </button>
+          {result.mapUrl && (
+            <a href={result.mapUrl} target="_blank" rel="noreferrer">
+              Google Maps <ExternalLink size={14} />
+            </a>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+export default function App() {
+  const [restaurants, setRestaurants] = useState([]),
+    [history, setHistory] = useState([]),
+    [filters, setFilters] = useState({
+      meal: ALL,
+      budget: ALL,
+      category: ALL,
+      area: ALL,
+    }),
+    [form, setForm] = useState(EMPTY),
+    [mapLink, setMapLink] = useState(""),
+    [batch, setBatch] = useState(""),
+    [result, setResult] = useState(null),
+    [rolling, setRolling] = useState(false),
+    [busy, setBusy] = useState(false),
+    [error, setError] = useState(""),
+    [message, setMessage] = useState("把選擇困難交給宇宙。");
+  const load = async () => {
+    try {
+      const d = await api();
+      setRestaurants(d.restaurants);
+      setHistory(d.history);
+      setError("");
+    } catch (e) {
+      setError(e.message);
+    }
+  };
+  // Initial fetch synchronizes this client with the shared Redis state.
+  // oxlint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    void load();
+  }, []);
+  const options = useMemo(
+    () => ({
+      meal: [...new Set(restaurants.flatMap((x) => x.meal))],
+      category: [...new Set(restaurants.map((x) => x.category))],
+      area: [...new Set(restaurants.map((x) => x.area))],
+    }),
+    [restaurants],
+  );
+  const matches = useMemo(
+    () =>
+      restaurants.filter(
+        (x) =>
+          (filters.meal === ALL || x.meal.includes(filters.meal)) &&
+          (filters.category === ALL || x.category === filters.category) &&
+          (filters.area === ALL || x.area === filters.area) &&
+          x.price <=
+            (filters.budget === ALL ? Infinity : Number(filters.budget)),
+      ),
+    [restaurants, filters],
+  );
+  const update = (key, value) =>
+    setFilters((old) => ({ ...old, [key]: value }));
+  const decide = () => {
+    if (rolling) return;
+    if (!matches.length) {
+      setResult(null);
+      setMessage(
+        restaurants.length
+          ? "這條件太挑了，放寬一點吧！"
+          : "先在下方新增餐廳，就可以開始抽籤。",
+      );
+      return;
+    }
+    setRolling(true);
+    setMessage("命運轉動中…");
+    let ticks = 0;
+    const timer = setInterval(() => {
+      setResult(matches[Math.floor(Math.random() * matches.length)]);
+      if (++ticks >= 13) {
+        clearInterval(timer);
+        setResult(matches[Math.floor(Math.random() * matches.length)]);
+        setRolling(false);
+        setMessage("命運已決定。喜歡就投它一票！");
+      }
+    }, 100);
+  };
+  const mutate = async (payload) => {
+    setBusy(true);
+    setError("");
+    try {
+      await api({
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      await load();
+      return true;
+    } catch (e) {
+      setError(e.message);
+      return false;
+    } finally {
+      setBusy(false);
+    }
+  };
+  const add = async (e) => {
+    e.preventDefault();
+    if (await mutate({ action: "add", restaurant: form })) setForm(EMPTY);
+  };
+  const addFromMap = async (e) => {
+    e.preventDefault();
+    if (await mutate({ action: "addFromMapUrl", mapUrl: mapLink })) {
+      setMapLink("");
+      setMessage("已從 Google Maps 連結新增餐廳。");
+    }
+  };
+  const importBatch = async () => {
+    const lines = batch
+        .split(/\r?\n/)
+        .map((x) => x.trim())
+        .filter(Boolean),
+      restaurants = lines
+        .map((line) => {
+          const separator = line.indexOf("|");
+          return separator < 0
+            ? null
+            : {
+                name: line.slice(0, separator).trim(),
+                mapUrl: line.slice(separator + 1).trim(),
+              };
+        })
+        .filter((x) => x?.name && x.mapUrl);
+    if (!restaurants.length || restaurants.length !== lines.length) {
+      setError("每行都必須使用「餐廳名稱 | Google Maps 連結」格式");
+      return;
+    }
+    if (await mutate({ action: "batchAdd", restaurants })) {
+      setBatch("");
+      setMessage(`成功匯入 ${restaurants.length} 間餐廳。`);
+    }
+  };
+  const remove = async (x) => {
+    if (
+      confirm(`確定刪除「${x.name}」？票數也會一起刪除。`) &&
+      (await mutate({ action: "delete", id: x.id })) &&
+      result?.id === x.id
+    )
+      setResult(null);
+  };
+  const vote = async () => {
+    if (result && (await mutate({ action: "vote", id: result.id })))
+      setMessage(`已投給 ${result.name}，大家都看得到這一票。`);
+  };
+  return (
+    <main className="app-shell">
+      <div className="orb orb-one" />
+      <div className="orb orb-two" />
+      <section className="hero">
+        <div className="eyebrow">
+          <Sparkles size={15} /> SHARED FOOD ORACLE
+        </div>
+        <h1>
+          今天
+          <br className="mobile-break" />
+          吃什麼？
+        </h1>
+        <p>新增口袋名單、一起投票，讓命運替大家選一餐。</p>
+      </section>
+      {error && (
+        <div className="error-banner" role="alert">
+          {error}
+        </div>
+      )}
+      <section className="glass-card">
+        <div className="filters">
+          <Filter
+            label="餐別"
+            value={filters.meal}
+            options={options.meal}
+            onChange={(v) => update("meal", v)}
+          />
+          <Filter
+            label="預算"
+            value={filters.budget}
+            options={["150", "250", "350", "500"]}
+            onChange={(v) => update("budget", v)}
+          />
+          <Filter
+            label="料理"
+            value={filters.category}
+            options={options.category}
+            onChange={(v) => update("category", v)}
+          />
+          <Filter
+            label="地區"
+            value={filters.area}
+            options={options.area}
+            onChange={(v) => update("area", v)}
+          />
+        </div>
+        <div className="match-count">
+          目前有 <strong>{matches.length}</strong> 個命運候選
+        </div>
+        <div className="result-stage" aria-live="polite">
+          <Result {...{ result, rolling, restaurants, vote, busy }} />
+        </div>
+        <p className="message">{message}</p>
+        <button
+          className="decide-button"
+          onClick={decide}
+          disabled={rolling || busy}
+        >
+          {result && !rolling ? (
+            <RotateCcw size={21} />
+          ) : (
+            <Sparkles size={21} />
+          )}{" "}
+          {rolling ? "正在召喚命運…" : result ? "再抽一次" : "幫我決定"}
+        </button>
+      </section>
+      <section className="community-grid">
+        <QuickAdd {...{ mapLink, setMapLink, addFromMap, busy }} />
+        <RestaurantForm {...{ form, setForm, add, busy }} />
+        <BatchImport {...{ batch, setBatch, importBatch, busy }} />
+        <Ranking {...{ restaurants, remove, busy }} />
+        <VoteHistory history={history} />
+      </section>
+      <footer>WHAT TO EAT · 所有人共享同一份名單與票數</footer>
+    </main>
+  );
 }
