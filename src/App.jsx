@@ -4,9 +4,7 @@ import {
   Check,
   ChevronDown,
   ExternalLink,
-  Heart,
   History,
-  Info,
   MapPin,
   Pencil,
   RotateCcw,
@@ -87,34 +85,24 @@ function QuickAdd({ mapLink, setMapLink, addFromMap, busy }) {
 function VoteButtons({ restaurant, vote, busy }) {
   const voters = restaurant.voters || [];
   return (
-    <div className={`vote-box ${voters.length === 2 ? "unanimous" : ""}`}>
-      <div className="vote-caption">
-        <Heart size={14} fill={voters.length ? "currentColor" : "none"} />
-        {voters.length === 2
-          ? "兩個人都想吃！"
-          : voters.length === 1
-            ? `${voters[0]}想吃`
-            : "今天誰想吃？"}
-      </div>
-      <div className="vote-buttons">
-        {USERS.map((user) => {
-          const selected = voters.includes(user);
-          return (
-            <button
-              key={user}
-              aria-pressed={selected}
-              className={
-                selected ? `selected ${user === "威威" ? "wei" : "su"}` : ""
-              }
-              onClick={() => vote(restaurant, user)}
-              disabled={busy}
-            >
-              <strong>{user}</strong>
-              <span className="vote-mark">{selected ? "✓" : "+"}</span>
-            </button>
-          );
-        })}
-      </div>
+    <div className="vote-buttons">
+      {USERS.map((user) => {
+        const selected = voters.includes(user);
+        return (
+          <button
+            key={user}
+            aria-pressed={selected}
+            className={
+              selected ? `selected ${user === "威威" ? "wei" : "su"}` : ""
+            }
+            onClick={() => vote(restaurant, user)}
+            disabled={busy}
+          >
+            <strong>{user}</strong>
+            <span className="vote-mark">{selected ? "✓" : "+"}</span>
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -133,12 +121,53 @@ function Ranking({ restaurants, remove, vote, eat, edit, showDetail, busy }) {
             <Trophy size={24} /> 今天想吃排行榜
           </h2>
         </div>
-        <span className="ranking-total">{restaurants.length} 間候選</span>
+        <div className="ranking-summary">
+          <span className="ranking-total">{restaurants.length} 間候選</span>
+          <small>長按卡片看詳細</small>
+        </div>
       </div>
       <div className="restaurant-list">
         {restaurants.length ? (
           restaurants.map((x, index) => (
-            <div className="restaurant-row" key={x.id}>
+            <div
+              className="restaurant-row"
+              key={x.id}
+              onPointerDown={(e) => {
+                const card = e.currentTarget;
+                card.dataset.held = "false";
+                card.dataset.startX = e.clientX;
+                card.dataset.startY = e.clientY;
+                card.dataset.timer = setTimeout(() => {
+                  card.dataset.held = "true";
+                  showDetail(x);
+                }, 500);
+              }}
+              onPointerMove={(e) => {
+                const card = e.currentTarget;
+                if (
+                  Math.abs(e.clientX - Number(card.dataset.startX)) > 10 ||
+                  Math.abs(e.clientY - Number(card.dataset.startY)) > 10
+                )
+                  clearTimeout(Number(card.dataset.timer));
+              }}
+              onPointerUp={(e) =>
+                clearTimeout(Number(e.currentTarget.dataset.timer))
+              }
+              onPointerCancel={(e) =>
+                clearTimeout(Number(e.currentTarget.dataset.timer))
+              }
+              onPointerLeave={(e) =>
+                clearTimeout(Number(e.currentTarget.dataset.timer))
+              }
+              onClickCapture={(e) => {
+                if (e.currentTarget.dataset.held === "true") {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  e.currentTarget.dataset.held = "false";
+                }
+              }}
+              onContextMenu={(e) => e.preventDefault()}
+            >
               <span className={`rank-number rank-${index + 1}`}>
                 {index + 1}
               </span>
@@ -160,26 +189,6 @@ function Ranking({ restaurants, remove, vote, eat, edit, showDetail, busy }) {
                 </button>
               </div>
               <div className="row-actions">
-                <button
-                  className="detail-hold-button"
-                  onPointerDown={(e) => {
-                    e.currentTarget.dataset.timer = setTimeout(
-                      () => showDetail(x),
-                      500,
-                    );
-                  }}
-                  onPointerUp={(e) =>
-                    clearTimeout(Number(e.currentTarget.dataset.timer))
-                  }
-                  onPointerLeave={(e) =>
-                    clearTimeout(Number(e.currentTarget.dataset.timer))
-                  }
-                  onContextMenu={(e) => e.preventDefault()}
-                  aria-label={`長按查看 ${x.name} 詳細資訊`}
-                  title="長按查看詳細資訊"
-                >
-                  <Info size={17} />
-                </button>
                 <button
                   onClick={() => edit(x)}
                   disabled={busy}

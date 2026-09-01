@@ -75,6 +75,105 @@
   }
 }
 
+/* Compact mobile-first restaurant cards */
+.ranking-summary {
+  display: grid;
+  justify-items: end;
+  gap: 6px;
+}
+.ranking-summary small {
+  color: #83766d;
+  font-size: 0.65rem;
+}
+.ranking-panel .restaurant-list {
+  grid-template-columns: 1fr;
+  gap: 9px;
+}
+.ranking-panel .restaurant-row {
+  min-height: 0;
+  padding: 14px;
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.ranking-panel .restaurant-row:active {
+  border-color: rgba(251, 191, 36, 0.42);
+  background: rgba(251, 191, 36, 0.08);
+}
+.ranking-panel .restaurant-main {
+  padding-left: 32px;
+  padding-right: 96px;
+}
+.ranking-panel .restaurant-main > strong {
+  font-size: 0.94rem;
+  line-height: 1.35;
+}
+.ranking-panel .restaurant-main > small {
+  margin-top: 2px;
+}
+.ranking-panel .rank-number {
+  top: 12px;
+  left: 12px;
+  width: 25px;
+  height: 25px;
+}
+.ranking-panel .last-eaten {
+  margin-top: 6px;
+  padding: 4px 7px;
+}
+.ranking-panel .vote-buttons {
+  gap: 6px;
+  margin-top: 9px;
+}
+.ranking-panel .vote-buttons button {
+  min-height: 34px;
+  padding: 6px 9px;
+  border-radius: 10px;
+}
+.ranking-panel .eat-button {
+  min-height: 34px;
+  margin-top: 6px;
+  padding: 6px 10px;
+  font-size: 0.76rem;
+}
+.ranking-panel .row-actions {
+  position: absolute;
+  top: 11px;
+  right: 11px;
+  gap: 4px;
+}
+.ranking-panel .row-actions a,
+.ranking-panel .row-actions button {
+  width: 29px;
+  height: 29px;
+  border-radius: 8px;
+}
+@media (min-width: 760px) {
+  .ranking-panel .restaurant-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 680px) {
+  .ranking-panel {
+    padding: 14px;
+  }
+  .ranking-heading {
+    margin-bottom: 13px;
+  }
+  .ranking-heading h2 {
+    font-size: 1.18rem;
+  }
+  .ranking-kicker {
+    font-size: 0.55rem;
+  }
+  .ranking-total {
+    padding: 5px 8px;
+  }
+  .ranking-summary small {
+    font-size: 0.58rem;
+  }
+}
+
 /* Featured leaderboard, meal history and restaurant editor */
 .ranking-spotlight {
   position: relative;
@@ -1363,5 +1462,69 @@ footer {
   }
   .eyebrow {
     font-size: 0.64rem;
+  }
+}
+
+/* Final compact-card cascade */
+.ranking-panel .restaurant-list {
+  grid-template-columns: 1fr;
+  gap: 9px;
+  max-height: none;
+  overflow: visible;
+}
+.ranking-panel .restaurant-row {
+  min-height: 0;
+  padding: 14px;
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.ranking-panel .restaurant-main {
+  padding-left: 32px;
+  padding-right: 96px;
+}
+.ranking-panel .rank-number {
+  top: 12px;
+  left: 12px;
+  width: 25px;
+  height: 25px;
+}
+.ranking-panel .vote-buttons {
+  gap: 6px;
+  margin-top: 9px;
+}
+.ranking-panel .vote-buttons button {
+  min-height: 34px;
+  padding: 6px 9px;
+}
+.ranking-panel .eat-button {
+  min-height: 34px;
+  margin-top: 6px;
+  padding: 6px 10px;
+}
+.ranking-panel .row-actions {
+  position: absolute;
+  top: 11px;
+  right: 11px;
+}
+.ranking-panel .row-actions a,
+.ranking-panel .row-actions button {
+  width: 29px;
+  height: 29px;
+}
+@media (min-width: 760px) {
+  .ranking-panel .restaurant-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 680px) {
+  .ranking-panel {
+    padding: 14px;
+  }
+  .ranking-heading {
+    margin-bottom: 13px;
+  }
+  .ranking-heading h2 {
+    font-size: 1.18rem;
   }
 }
