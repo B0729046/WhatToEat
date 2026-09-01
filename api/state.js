@@ -8,7 +8,20 @@ const KEYS = {
   history: "whattoeat:history",
 };
 const USERS = ["威威", "小蘇蘇"];
-const voteKey = (user) => `whattoeat:votes:${user}`;
+function taipeiDay() {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Taipei",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const value = Object.fromEntries(
+    parts.map((part) => [part.type, part.value]),
+  );
+  return `${value.year}-${value.month}-${value.day}`;
+}
+const voteKey = (user) => `whattoeat:votes:${taipeiDay()}:${user}`;
+const historyKey = () => `whattoeat:history:${taipeiDay()}`;
 function send(res, status, body) {
   res
     .status(status)
@@ -62,6 +75,26 @@ function cleanPlaceName(value) {
   );
   return withoutAddress || original;
 }
+function inferArea(value) {
+  return (
+    String(value || "").match(/(?:縣|市)([^縣市]{1,6}(?:區|鄉|鎮|市))/)?.[1] ||
+    "未設定"
+  );
+}
+function inferCategory(name) {
+  const rules = [
+    [/壽司|寿司|鮨|拉麵|丼|咖哩|居酒屋|燒鳥/, "日式"],
+    [/魯肉|滷肉|雞肉飯|牛肉麵|小吃|麵線|湯包/, "台式"],
+    [/義麵|義大利|披薩|Pizza/i, "義式"],
+    [/韓式|韓國|泡菜|部隊鍋/, "韓式"],
+    [/泰式|泰國|打拋|河粉|越南/, "東南亞"],
+    [/火鍋|涮涮鍋|麻辣鍋/, "鍋物"],
+    [/咖啡|Cafe|Café/i, "咖啡廳"],
+    [/早餐|吐司|蛋餅/, "早餐"],
+    [/燒肉|烤肉/, "燒肉"],
+  ];
+  return rules.find(([pattern]) => pattern.test(name))?.[1] || "餐廳";
+}
 async function restaurantFromGoogleMaps(mapUrl) {
   const original = googleMapsUrl(mapUrl);
   const response = await fetch(original, {
@@ -73,20 +106,20 @@ async function restaurantFromGoogleMaps(mapUrl) {
   const metaTag = html.match(
     /<meta[^>]+(?:property|name)=["']og:title["'][^>]*>/i,
   )?.[0];
-  let name = metaTag?.match(/content=["']([^"']+)/i)?.[1];
-  if (!name) name = response.url.match(/\/maps\/place\/([^/]+)/)?.[1];
-  if (name) name = decodeURIComponent(name.replace(/\+/g, " "));
-  name = cleanPlaceName(
-    name?.replace(/&amp;/g, "&").replace(/\s*[-–]\s*Google Maps.*$/i, ""),
+  let rawName = metaTag?.match(/content=["']([^"']+)/i)?.[1];
+  if (!rawName) rawName = response.url.match(/\/maps\/place\/([^/]+)/)?.[1];
+  if (rawName) rawName = decodeURIComponent(rawName.replace(/\+/g, " "));
+  const name = cleanPlaceName(
+    rawName?.replace(/&amp;/g, "&").replace(/\s*[-–]\s*Google Maps.*$/i, ""),
   );
   if (!response.ok || !name || name === "Google Maps")
     throw new Error("無法從這個連結取得餐廳名稱，請改用下方手動新增");
   return cleanRestaurant({
     name,
     mapUrl: original.toString(),
-    category: "未分類",
-    area: "未設定",
-    price: 0,
+    category: inferCategory(name),
+    area: inferArea(rawName),
+    price: null,
     meal: ["早餐", "午餐", "晚餐", "宵夜"],
   });
 }
@@ -95,19 +128,46 @@ async function getState() {
     redis("HGETALL", KEYS.restaurants),
     redis("SMEMBERS", voteKey("威威")),
     redis("SMEMBERS", voteKey("小蘇蘇")),
-    redis("LRANGE", KEYS.history, 0, 49),
+    redis("LRANGE", historyKey(), 0, 49),
   ]);
   const selections = {
     威威: new Set(weiVotes || []),
     小蘇蘇: new Set(suVotes || []),
   };
-  const restaurants = Object.values(pairs(rawRestaurants))
-    .map(JSON.parse)
+  const storedRestaurants = Object.values(pairs(rawRestaurants)).map(
+    JSON.parse,
+  );
+  const enrichedRestaurants = await Promise.all(
+    storedRestaurants.map(async (item) => {
+      if (item.enrichedAt || !item.mapUrl) return item;
+      let updated = { ...item, enrichedAt: new Date().toISOString() };
+      try {
+        const details = await restaurantFromGoogleMaps(item.mapUrl);
+        updated = {
+          ...updated,
+          name: details.name,
+          category: details.category,
+          area: details.area,
+          price: details.price,
+        };
+      } catch (error) {
+        console.warn(`Unable to enrich ${item.name}:`, error.message);
+      }
+      await redis("HSET", KEYS.restaurants, item.id, JSON.stringify(updated));
+      return updated;
+    }),
+  );
+  const restaurants = enrichedRestaurants
     .map((item) => {
       const voters = USERS.filter((user) => selections[user].has(item.id));
+      const name = cleanPlaceName(item.name);
       return {
         ...item,
-        name: cleanPlaceName(item.name),
+        name,
+        category:
+          item.category === "未分類" ? inferCategory(name) : item.category,
+        area: item.area === "未設定" ? inferArea(item.name) : item.area,
+        price: item.price === 0 ? null : item.price,
         voters,
         votes: voters.length,
       };
@@ -132,7 +192,7 @@ function cleanRestaurant(body) {
     area = String(body.area || "")
       .trim()
       .slice(0, 30),
-    price = Number(body.price),
+    price = body.price == null || body.price === "" ? null : Number(body.price),
     mapUrl = String(body.mapUrl || "")
       .trim()
       .slice(0, 500);
@@ -145,8 +205,7 @@ function cleanRestaurant(body) {
     !name ||
     !category ||
     !area ||
-    !Number.isFinite(price) ||
-    price < 0 ||
+    (price !== null && (!Number.isFinite(price) || price < 0)) ||
     !meal.length
   )
     throw new Error("餐廳資料不完整");
@@ -156,7 +215,7 @@ function cleanRestaurant(body) {
     name,
     category,
     area,
-    price: Math.round(price),
+    price: price === null ? null : Math.round(price),
     meal,
     mapUrl,
     createdAt: new Date().toISOString(),
@@ -206,8 +265,12 @@ export default async function handler(req, res) {
         action: wasSelected ? "remove" : "add",
         createdAt: new Date().toISOString(),
       };
-      await redis("LPUSH", KEYS.history, JSON.stringify(record));
-      await redis("LTRIM", KEYS.history, 0, 49);
+      await redis("LPUSH", historyKey(), JSON.stringify(record));
+      await redis("LTRIM", historyKey(), 0, 49);
+      await Promise.all([
+        redis("EXPIRE", historyKey(), 259200),
+        redis("EXPIRE", voteKey(voter), 259200),
+      ]);
       return send(res, 200, { selected: !wasSelected, record });
     }
     return send(res, 400, { error: "不支援的操作" });

@@ -57,7 +57,7 @@ function QuickAdd({ mapLink, setMapLink, addFromMap, busy }) {
           type="url"
           value={mapLink}
           onChange={(e) => setMapLink(e.target.value)}
-          placeholder="貼上 maps.app.goo.gl 餐廳連結"
+          placeholder="貼上 Google Map 網址"
         />
         <button className="secondary-button" disabled={busy || !mapLink.trim()}>
           解析連結並新增
@@ -152,30 +152,46 @@ function Ranking({ restaurants, remove, vote, busy }) {
     </div>
   );
 }
-function VoteHistory({ history }) {
+function TodayVotes({ restaurants }) {
   return (
     <div className="panel history-panel">
       <h2>
         <History size={20} />
-        最近投票紀錄
+        今天誰投了什麼
       </h2>
-      <div className="history-list">
-        {history.length ? (
-          history.map((x) => (
-            <div key={x.id}>
-              <span>
-                <strong>{x.voter || "匿名"}</strong>
-                {x.action === "remove" ? " 取消 " : " 投給 "}
-                <strong>{x.name}</strong>
-              </span>
-              <time dateTime={x.createdAt}>
-                {new Date(x.createdAt).toLocaleString("zh-TW")}
-              </time>
-            </div>
-          ))
-        ) : (
-          <p className="muted">還沒有投票紀錄。</p>
-        )}
+      <div className="today-votes">
+        {USERS.map((user) => {
+          const picks = restaurants.filter((item) =>
+            item.voters?.includes(user),
+          );
+          return (
+            <section
+              key={user}
+              className={`today-voter ${user === "威威" ? "wei" : "su"}`}
+            >
+              <header>
+                <span className="voter-avatar">
+                  {user === "威威" ? "威" : "蘇"}
+                </span>
+                <div>
+                  <strong>{user}</strong>
+                  <small>
+                    {picks.length
+                      ? `今天選了 ${picks.length} 間`
+                      : "今天還沒投票"}
+                  </small>
+                </div>
+              </header>
+              <div className="today-picks">
+                {picks.length ? (
+                  picks.map((item) => <span key={item.id}>{item.name}</span>)
+                ) : (
+                  <em>等待選擇中</em>
+                )}
+              </div>
+            </section>
+          );
+        })}
       </div>
     </div>
   );
@@ -205,7 +221,9 @@ function Result({ result, rolling, restaurants, vote, busy }) {
           <MapPin size={15} />
           {result.area}
         </span>
-        <span>約 NT$ {result.price}</span>
+        <span>
+          {result.price == null ? "價位未提供" : `約 NT$ ${result.price}`}
+        </span>
         <span>
           <Trophy size={15} />
           {restaurants.find((x) => x.id === result.id)?.votes || 0} 票
@@ -229,9 +247,7 @@ function Result({ result, rolling, restaurants, vote, busy }) {
 }
 export default function App() {
   const [restaurants, setRestaurants] = useState([]),
-    [history, setHistory] = useState([]),
     [filters, setFilters] = useState({
-      meal: ALL,
       budget: ALL,
       category: ALL,
       area: ALL,
@@ -246,7 +262,6 @@ export default function App() {
     try {
       const d = await api();
       setRestaurants(d.restaurants);
-      setHistory(d.history);
       setError("");
     } catch (e) {
       setError(e.message);
@@ -259,7 +274,6 @@ export default function App() {
   }, []);
   const options = useMemo(
     () => ({
-      meal: [...new Set(restaurants.flatMap((x) => x.meal))],
       category: [...new Set(restaurants.map((x) => x.category))],
       area: [...new Set(restaurants.map((x) => x.area))],
     }),
@@ -269,11 +283,10 @@ export default function App() {
     () =>
       restaurants.filter(
         (x) =>
-          (filters.meal === ALL || x.meal.includes(filters.meal)) &&
           (filters.category === ALL || x.category === filters.category) &&
           (filters.area === ALL || x.area === filters.area) &&
-          x.price <=
-            (filters.budget === ALL ? Infinity : Number(filters.budget)),
+          (filters.budget === ALL ||
+            (x.price != null && x.price <= Number(filters.budget))),
       ),
     [restaurants, filters],
   );
@@ -366,12 +379,6 @@ export default function App() {
       <section className="glass-card">
         <div className="filters">
           <Filter
-            label="餐別"
-            value={filters.meal}
-            options={options.meal}
-            onChange={(v) => update("meal", v)}
-          />
-          <Filter
             label="預算"
             value={filters.budget}
             options={["150", "250", "350", "500"]}
@@ -413,7 +420,7 @@ export default function App() {
       <section className="community-grid">
         <QuickAdd {...{ mapLink, setMapLink, addFromMap, busy }} />
         <Ranking {...{ restaurants, remove, vote, busy }} />
-        <VoteHistory history={history} />
+        <TodayVotes restaurants={restaurants} />
       </section>
       <footer>WHAT TO EAT · 所有人共享同一份名單與票數</footer>
     </main>
