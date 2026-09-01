@@ -76,6 +76,34 @@ function cleanPlaceName(value) {
   );
   return withoutAddress || original;
 }
+function decodeHtml(value) {
+  return String(value || "")
+    .replace(/&amp;/gi, "&")
+    .replace(/&#39;|&apos;/gi, "'")
+    .replace(/&quot;/gi, '"')
+    .replace(/&nbsp;/gi, " ")
+    .trim();
+}
+function placeNameFromUrl(value) {
+  let url;
+  try {
+    url = new URL(value);
+  } catch {
+    return "";
+  }
+  const pathMatch = decodeURIComponent(url.pathname).match(
+    /\/maps\/(?:place|search)\/([^/@?]+)/i,
+  );
+  const query = url.searchParams.get("q") || url.searchParams.get("query");
+  const candidate = (pathMatch?.[1] || query || "").replace(/\+/g, " ").trim();
+  if (
+    !candidate ||
+    /^-?\d+(?:\.\d+)?,\s*-?\d+(?:\.\d+)?$/.test(candidate) ||
+    /^(maps|google maps|餐廳|restaurant)$/i.test(candidate)
+  )
+    return "";
+  return candidate;
+}
 function inferArea(value) {
   const text = String(value || "");
   const verified = { 十巷咖哩: "中山區", 今大魯肉飯: "三重區" };
@@ -177,21 +205,36 @@ async function restaurantFromGoogleMaps(mapUrl) {
   const original = googleMapsUrl(mapUrl);
   const response = await fetch(original, {
     redirect: "follow",
-    headers: { "User-Agent": "Mozilla/5.0 WhatToEat/1.0" },
+    headers: {
+      "User-Agent":
+        "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36",
+      "Accept-Language": "zh-TW,zh;q=0.9,en;q=0.7",
+    },
   });
   googleMapsUrl(response.url);
   const html = await response.text();
-  const metaTag = html.match(
-    /<meta[^>]+(?:property|name)=["']og:title["'][^>]*>/i,
-  )?.[0];
-  let rawName = metaTag?.match(/content=["']([^"']+)/i)?.[1];
-  if (!rawName) rawName = response.url.match(/\/maps\/place\/([^/]+)/)?.[1];
-  if (rawName) rawName = decodeURIComponent(rawName.replace(/\+/g, " "));
+  const metaTags = html.match(/<meta\b[^>]*>/gi) || [];
+  const titleMeta = metaTags.find(
+    (tag) =>
+      /(?:property|name)=["'](?:og:title|twitter:title)["']/i.test(tag) ||
+      /itemprop=["']name["']/i.test(tag),
+  );
+  let rawName = titleMeta?.match(/content=["']([^"']+)/i)?.[1];
+  if (!rawName) rawName = html.match(/<title[^>]*>([^<]+)<\/title>/i)?.[1];
+  rawName = decodeHtml(rawName)
+    .replace(/^Google Maps\s*[-–·|]\s*/i, "")
+    .replace(/\s*[-–·|]\s*Google Maps.*$/i, "")
+    .trim();
+  if (!rawName || rawName === "Google Maps")
+    rawName =
+      placeNameFromUrl(response.url) || placeNameFromUrl(original.toString());
   const name = cleanPlaceName(
-    rawName?.replace(/&amp;/g, "&").replace(/\s*[-–]\s*Google Maps.*$/i, ""),
+    rawName?.replace(/\s*[-–]\s*Google Maps.*$/i, ""),
   );
   if (!response.ok || !name || name === "Google Maps")
-    throw new Error("無法從這個連結取得餐廳名稱，請改用下方手動新增");
+    throw new Error(
+      "無法辨識這個 Google Maps 連結。請進入餐廳頁面，按「分享」→「複製連結」後再貼上",
+    );
   const category = inferCategory(name);
   const addressArea = inferArea(rawName);
   const coordinateArea =
