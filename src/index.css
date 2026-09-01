@@ -1088,7 +1088,7 @@ h1 {
 }
 .vote-buttons button {
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: 1fr auto;
   align-items: center;
   gap: 8px;
   min-width: 0;
@@ -1126,6 +1126,103 @@ h1 {
 .vote-buttons strong {
   color: inherit;
   font-size: 0.78rem;
+}
+.detail-hold-button {
+  touch-action: none;
+}
+.detail-hold-button:active {
+  color: #211306 !important;
+  background: #fbbf24 !important;
+  transform: scale(0.94);
+}
+.dining-history-row {
+  grid-template-columns: 130px 1fr auto;
+}
+.dining-history-row > button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 0;
+  border-radius: 9px;
+  padding: 7px 9px;
+  color: #d9cbbf;
+  background: rgba(255, 255, 255, 0.07);
+  cursor: pointer;
+}
+.modal-input {
+  width: 100%;
+  min-height: 46px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  padding: 11px 13px;
+  color: #fff8ed;
+  background: rgba(0, 0, 0, 0.25);
+  font: inherit;
+  color-scheme: dark;
+}
+.meal-modal-actions {
+  display: grid;
+  grid-template-columns: auto 1fr 1.4fr;
+  gap: 9px;
+  margin-top: 24px;
+}
+.meal-modal-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 44px;
+  border: 0;
+  border-radius: 11px;
+  padding: 9px 12px;
+  color: #ddd0c5;
+  background: rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+}
+.meal-modal-actions .secondary-button {
+  margin: 0;
+  color: #241408;
+}
+.meal-modal-actions .danger-button {
+  color: #fecdd3;
+  background: rgba(190, 24, 93, 0.2);
+}
+.detail-modal dl {
+  display: grid;
+  gap: 8px;
+  margin: 0 0 22px;
+}
+.detail-modal dl > div {
+  display: grid;
+  grid-template-columns: 70px 1fr;
+  gap: 12px;
+  padding: 11px 13px;
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.045);
+}
+.detail-modal dt {
+  color: #94877e;
+}
+.detail-modal dd {
+  margin: 0;
+  color: #fff4e6;
+}
+@media (max-width: 680px) {
+  .dining-history-row {
+    grid-template-columns: 95px 1fr auto;
+    gap: 8px;
+  }
+  .dining-history-row > button {
+    width: 34px;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+  .meal-modal-actions {
+    grid-template-columns: 1fr 1fr;
+  }
+  .meal-modal-actions .danger-button {
+    grid-column: 1/-1;
+  }
 }
 .vote-buttons small {
   margin-top: 1px;

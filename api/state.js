@@ -352,6 +352,39 @@ export default async function handler(req, res) {
       );
       return send(res, 201, { restaurant });
     }
+    if (body.action === "deleteMeal") {
+      const date = String(body.date || "");
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date))
+        return send(res, 400, { error: "用餐日期格式不正確" });
+      await redis("HDEL", KEYS.meals, date);
+      return send(res, 200, { ok: true });
+    }
+    if (body.action === "updateMeal") {
+      const date = String(body.date || "");
+      const newDate = String(body.newDate || "");
+      const restaurantId = String(body.restaurantId || "");
+      if (
+        !/^\d{4}-\d{2}-\d{2}$/.test(date) ||
+        !/^\d{4}-\d{2}-\d{2}$/.test(newDate)
+      )
+        return send(res, 400, { error: "用餐日期格式不正確" });
+      const mealRestaurantRaw = await redis(
+        "HGET",
+        KEYS.restaurants,
+        restaurantId,
+      );
+      if (!mealRestaurantRaw)
+        return send(res, 404, { error: "找不到這間餐廳" });
+      const mealRestaurant = JSON.parse(mealRestaurantRaw);
+      const record = {
+        restaurantId,
+        name: cleanPlaceName(mealRestaurant.name),
+        createdAt: new Date().toISOString(),
+      };
+      if (date !== newDate) await redis("HDEL", KEYS.meals, date);
+      await redis("HSET", KEYS.meals, newDate, JSON.stringify(record));
+      return send(res, 200, { ...record, date: newDate });
+    }
     const id = String(body.id || "");
     if (!id) return send(res, 400, { error: "缺少餐廳 ID" });
     const raw = await redis("HGET", KEYS.restaurants, id);

@@ -6,6 +6,7 @@ import {
   ExternalLink,
   Heart,
   History,
+  Info,
   MapPin,
   Pencil,
   RotateCcw,
@@ -108,13 +109,7 @@ function VoteButtons({ restaurant, vote, busy }) {
               onClick={() => vote(restaurant, user)}
               disabled={busy}
             >
-              <span className="voter-avatar">
-                {user === "威威" ? "威" : "蘇"}
-              </span>
-              <span>
-                <strong>{user}</strong>
-                <small>{selected ? "已選這間" : "我想吃"}</small>
-              </span>
+              <strong>{user}</strong>
               <span className="vote-mark">{selected ? "✓" : "+"}</span>
             </button>
           );
@@ -128,7 +123,7 @@ function lastEatenText(x) {
   if (x.daysSinceEaten === 0) return "今天吃過";
   return `距離上次吃 ${x.daysSinceEaten} 天`;
 }
-function Ranking({ restaurants, remove, vote, eat, edit, busy }) {
+function Ranking({ restaurants, remove, vote, eat, edit, showDetail, busy }) {
   return (
     <div className="panel ranking-panel">
       <div className="ranking-heading">
@@ -149,10 +144,7 @@ function Ranking({ restaurants, remove, vote, eat, edit, busy }) {
               </span>
               <div className="restaurant-main">
                 <strong>{x.name}</strong>
-                <small>
-                  {(x.categories || [x.category]).join("、")} · {x.area} ·{" "}
-                  {x.price == null ? "價位未定" : `NT$ ${x.price}`}
-                </small>
+                <small>{x.votes} 票</small>
                 <span
                   className={`last-eaten ${x.daysSinceEaten === 0 ? "today" : ""}`}
                 >
@@ -168,6 +160,26 @@ function Ranking({ restaurants, remove, vote, eat, edit, busy }) {
                 </button>
               </div>
               <div className="row-actions">
+                <button
+                  className="detail-hold-button"
+                  onPointerDown={(e) => {
+                    e.currentTarget.dataset.timer = setTimeout(
+                      () => showDetail(x),
+                      500,
+                    );
+                  }}
+                  onPointerUp={(e) =>
+                    clearTimeout(Number(e.currentTarget.dataset.timer))
+                  }
+                  onPointerLeave={(e) =>
+                    clearTimeout(Number(e.currentTarget.dataset.timer))
+                  }
+                  onContextMenu={(e) => e.preventDefault()}
+                  aria-label={`長按查看 ${x.name} 詳細資訊`}
+                  title="長按查看詳細資訊"
+                >
+                  <Info size={17} />
+                </button>
                 <button
                   onClick={() => edit(x)}
                   disabled={busy}
@@ -246,7 +258,7 @@ function TodayVotes({ restaurants }) {
     </div>
   );
 }
-function DiningHistory({ diningHistory }) {
+function DiningHistory({ diningHistory, editMeal }) {
   return (
     <div className="panel dining-history-panel">
       <h2>
@@ -263,11 +275,117 @@ function DiningHistory({ diningHistory }) {
                 )}
               </time>
               <strong>{item.name}</strong>
+              <button onClick={() => editMeal(item)}>
+                <Pencil size={15} /> 更正
+              </button>
             </div>
           ))
         ) : (
           <p className="muted">還沒有紀錄，選定餐廳後按「今天吃這間」。</p>
         )}
+      </div>
+    </div>
+  );
+}
+function MealEditor({ meal, restaurants, save, remove, close, busy }) {
+  const [date, setDate] = useState(meal.date);
+  const [restaurantId, setRestaurantId] = useState(meal.restaurantId);
+  return (
+    <div
+      className="modal-backdrop"
+      onMouseDown={(e) => e.target === e.currentTarget && close()}
+    >
+      <form
+        className="edit-modal"
+        onSubmit={(e) => {
+          e.preventDefault();
+          save(meal, date, restaurantId);
+        }}
+      >
+        <span className="ranking-kicker">EDIT DINING HISTORY</span>
+        <h2>更正用餐紀錄</h2>
+        <label className="edit-label" htmlFor="meal-date">
+          日期
+        </label>
+        <input
+          className="modal-input"
+          id="meal-date"
+          type="date"
+          required
+          value={date}
+          onChange={(e) => setDate(e.target.value)}
+        />
+        <label className="edit-label" htmlFor="meal-restaurant">
+          餐廳
+        </label>
+        <select
+          className="modal-input"
+          id="meal-restaurant"
+          value={restaurantId}
+          onChange={(e) => setRestaurantId(e.target.value)}
+        >
+          {restaurants.map((x) => (
+            <option key={x.id} value={x.id}>
+              {x.name}
+            </option>
+          ))}
+        </select>
+        <div className="meal-modal-actions">
+          <button
+            type="button"
+            className="danger-button"
+            onClick={() => remove(meal)}
+            disabled={busy}
+          >
+            <Trash2 size={15} /> 刪除紀錄
+          </button>
+          <button type="button" onClick={close}>
+            取消
+          </button>
+          <button className="secondary-button" disabled={busy}>
+            儲存更正
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+function DetailModal({ restaurant, close }) {
+  return (
+    <div
+      className="modal-backdrop"
+      onMouseDown={(e) => e.target === e.currentTarget && close()}
+    >
+      <div className="edit-modal detail-modal">
+        <span className="ranking-kicker">RESTAURANT DETAILS</span>
+        <h2>{restaurant.name}</h2>
+        <dl>
+          <div>
+            <dt>料理</dt>
+            <dd>
+              {(restaurant.categories || [restaurant.category]).join("、")}
+            </dd>
+          </div>
+          <div>
+            <dt>地區</dt>
+            <dd>{restaurant.area}</dd>
+          </div>
+          <div>
+            <dt>價錢</dt>
+            <dd>
+              {restaurant.price == null
+                ? "尚未設定"
+                : `NT$ ${restaurant.price} / 人`}
+            </dd>
+          </div>
+          <div>
+            <dt>上次吃</dt>
+            <dd>{lastEatenText(restaurant)}</dd>
+          </div>
+        </dl>
+        <button className="secondary-button" onClick={close}>
+          關閉
+        </button>
       </div>
     </div>
   );
@@ -415,6 +533,8 @@ export default function App() {
     [rolling, setRolling] = useState(false),
     [busy, setBusy] = useState(false),
     [editing, setEditing] = useState(null),
+    [editingMeal, setEditingMeal] = useState(null),
+    [detail, setDetail] = useState(null),
     [error, setError] = useState(""),
     [message, setMessage] = useState("把選擇困難交給宇宙。");
   const load = async () => {
@@ -540,6 +660,26 @@ export default function App() {
       setMessage(`已更新 ${restaurant.name} 的分類與價錢。`);
     }
   };
+  const saveMeal = async (meal, newDate, restaurantId) => {
+    if (
+      await mutate({
+        action: "updateMeal",
+        date: meal.date,
+        newDate,
+        restaurantId,
+      })
+    ) {
+      setEditingMeal(null);
+      setMessage("用餐紀錄已更正。");
+    }
+  };
+  const removeMeal = async (meal) => {
+    if (!confirm(`確定刪除 ${meal.date} 的「${meal.name}」用餐紀錄？`)) return;
+    if (await mutate({ action: "deleteMeal", date: meal.date })) {
+      setEditingMeal(null);
+      setMessage("用餐紀錄已刪除。");
+    }
+  };
   return (
     <main className="app-shell">
       <div className="orb orb-one" />
@@ -567,6 +707,7 @@ export default function App() {
           vote={vote}
           eat={eat}
           edit={setEditing}
+          showDetail={setDetail}
           busy={busy}
         />
       </section>
@@ -614,7 +755,10 @@ export default function App() {
       <section className="community-grid">
         <QuickAdd {...{ mapLink, setMapLink, addFromMap, busy }} />
         <TodayVotes restaurants={restaurants} />
-        <DiningHistory diningHistory={diningHistory} />
+        <DiningHistory
+          diningHistory={diningHistory}
+          editMeal={setEditingMeal}
+        />
       </section>
       {editing && (
         <EditRestaurant
@@ -624,6 +768,20 @@ export default function App() {
           close={() => setEditing(null)}
           busy={busy}
         />
+      )}
+      {editingMeal && (
+        <MealEditor
+          key={editingMeal.date}
+          meal={editingMeal}
+          restaurants={restaurants}
+          save={saveMeal}
+          remove={removeMeal}
+          close={() => setEditingMeal(null)}
+          busy={busy}
+        />
+      )}
+      {detail && (
+        <DetailModal restaurant={detail} close={() => setDetail(null)} />
       )}
       <footer>WHAT TO EAT · 所有人共享同一份名單與票數</footer>
     </main>
