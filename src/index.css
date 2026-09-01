@@ -436,6 +436,16 @@
 .modal-actions .secondary-button {
   margin: 0;
   color: #241408;
+  border: 1px solid rgba(255, 238, 190, 0.7);
+  background: linear-gradient(105deg, #fed7aa, #fbbf24);
+  box-shadow: 0 10px 24px rgba(245, 158, 11, 0.2);
+  opacity: 1;
+}
+.modal-actions .secondary-button:hover {
+  filter: brightness(1.08);
+}
+.modal-actions .secondary-button:disabled {
+  opacity: 0.5;
 }
 @media (max-width: 680px) {
   .ranking-spotlight {
