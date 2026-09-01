@@ -146,6 +146,29 @@ async function areaFromCoordinates(html) {
     return "未設定";
   }
 }
+async function areaFromName(name) {
+  try {
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&countrycodes=tw&limit=1&q=${encodeURIComponent(name)}&accept-language=zh-TW`,
+      {
+        headers: {
+          "User-Agent":
+            "WhatToEat/1.0 (https://what-to-eat-chi-pink.vercel.app)",
+        },
+      },
+    );
+    const [place] = await response.json();
+    return (
+      place?.address?.city_district ||
+      place?.address?.suburb ||
+      place?.address?.town ||
+      place?.display_name?.match(/([^,，]{1,6}(?:區|鄉|鎮|市))[,，]/)?.[1] ||
+      "未設定"
+    );
+  } catch {
+    return "未設定";
+  }
+}
 async function restaurantFromGoogleMaps(mapUrl) {
   const original = googleMapsUrl(mapUrl);
   const response = await fetch(original, {
@@ -167,12 +190,14 @@ async function restaurantFromGoogleMaps(mapUrl) {
     throw new Error("無法從這個連結取得餐廳名稱，請改用下方手動新增");
   const category = inferCategory(name);
   const addressArea = inferArea(rawName);
+  const coordinateArea =
+    addressArea === "未設定" ? await areaFromCoordinates(html) : addressArea;
   return cleanRestaurant({
     name,
     mapUrl: original.toString(),
     category,
     area:
-      addressArea === "未設定" ? await areaFromCoordinates(html) : addressArea,
+      coordinateArea === "未設定" ? await areaFromName(name) : coordinateArea,
     price: estimatePrice(category),
     priceEstimated: true,
     meal: ["早餐", "午餐", "晚餐", "宵夜"],
@@ -194,11 +219,11 @@ async function getState() {
   );
   const enrichedRestaurants = await Promise.all(
     storedRestaurants.map(async (item) => {
-      if (item.enrichmentVersion === 2 || !item.mapUrl) return item;
+      if (item.enrichmentVersion === 3 || !item.mapUrl) return item;
       let updated = {
         ...item,
         enrichedAt: new Date().toISOString(),
-        enrichmentVersion: 2,
+        enrichmentVersion: 3,
       };
       try {
         const details = await restaurantFromGoogleMaps(item.mapUrl);
