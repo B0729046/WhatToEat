@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   CalendarDays,
   Check,
@@ -518,6 +518,7 @@ function Result({ result, rolling, restaurants, vote, busy }) {
   );
 }
 export default function App() {
+  const toastTimer = useRef(null);
   const [restaurants, setRestaurants] = useState([]),
     [diningHistory, setDiningHistory] = useState([]),
     [filters, setFilters] = useState({
@@ -532,6 +533,7 @@ export default function App() {
     [editing, setEditing] = useState(null),
     [editingMeal, setEditingMeal] = useState(null),
     [detail, setDetail] = useState(null),
+    [toast, setToast] = useState(""),
     [error, setError] = useState(""),
     [message, setMessage] = useState("把選擇困難交給宇宙。");
   const load = async () => {
@@ -631,6 +633,9 @@ export default function App() {
   const vote = async (restaurant, voter) => {
     const wasSelected = restaurant.voters?.includes(voter);
     const before = restaurants;
+    setToast("還真會犒賞自己");
+    clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToast(""), 1800);
     setRestaurants((current) =>
       current
         .map((item) => {
@@ -696,9 +701,6 @@ export default function App() {
       <div className="orb orb-one" />
       <div className="orb orb-two" />
       <section className="hero">
-        <div className="eyebrow">
-          <Sparkles size={15} /> SHARED FOOD ORACLE
-        </div>
         <h1>
           今天
           <br className="mobile-break" />
@@ -711,6 +713,7 @@ export default function App() {
           {error}
         </div>
       )}
+      {toast && <div className="vote-toast">{toast}</div>}
       <section className="ranking-spotlight">
         <Ranking
           restaurants={restaurants}

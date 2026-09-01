@@ -75,6 +75,40 @@
   }
 }
 
+.hero h1 {
+  margin-top: 0;
+  font-size: clamp(2.8rem, 6vw, 4.2rem);
+  letter-spacing: -0.045em;
+}
+.vote-toast {
+  position: fixed;
+  z-index: 80;
+  top: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 11px 18px;
+  border: 1px solid rgba(251, 191, 36, 0.4);
+  border-radius: 999px;
+  color: #2a1605;
+  background: linear-gradient(105deg, #fed7aa, #fbbf24);
+  box-shadow: 0 14px 45px rgba(0, 0, 0, 0.4);
+  font-size: 0.86rem;
+  font-weight: 900;
+  white-space: nowrap;
+  animation: toast-in 0.2s ease-out;
+}
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -8px);
+  }
+}
+@media (max-width: 680px) {
+  .hero h1 {
+    font-size: clamp(2.7rem, 14vw, 3.6rem);
+  }
+}
+
 /* Compact mobile-first restaurant cards */
 .ranking-summary {
   display: grid;
@@ -171,6 +205,18 @@
   }
   .ranking-summary small {
     font-size: 0.58rem;
+  }
+}
+
+/* Final hero scale */
+.hero h1 {
+  margin-top: 0;
+  font-size: clamp(2.8rem, 6vw, 4.2rem);
+  letter-spacing: -0.045em;
+}
+@media (max-width: 680px) {
+  .hero h1 {
+    font-size: clamp(2.7rem, 14vw, 3.6rem);
   }
 }
 
