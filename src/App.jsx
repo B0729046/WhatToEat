@@ -633,9 +633,14 @@ export default function App() {
   const vote = async (restaurant, voter) => {
     const wasSelected = restaurant.voters?.includes(voter);
     const before = restaurants;
-    setToast("還真會犒賞自己");
-    clearTimeout(toastTimer.current);
-    toastTimer.current = setTimeout(() => setToast(""), 1800);
+    if (!wasSelected) {
+      setToast("還真會犒賞自己");
+      clearTimeout(toastTimer.current);
+      toastTimer.current = setTimeout(() => setToast(""), 1800);
+    } else {
+      clearTimeout(toastTimer.current);
+      setToast("");
+    }
     setRestaurants((current) =>
       current
         .map((item) => {
@@ -706,7 +711,6 @@ export default function App() {
           <br className="mobile-break" />
           吃什麼？
         </h1>
-        <p>新增口袋名單、一起投票，讓命運替大家選一餐。</p>
       </section>
       {error && (
         <div className="error-banner" role="alert">
