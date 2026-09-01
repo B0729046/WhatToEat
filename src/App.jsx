@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   ChevronDown,
   ExternalLink,
+  Heart,
   History,
   MapPin,
   RotateCcw,
@@ -66,22 +67,42 @@ function QuickAdd({ mapLink, setMapLink, addFromMap, busy }) {
   );
 }
 function VoteButtons({ restaurant, vote, busy }) {
+  const voters = restaurant.voters || [];
   return (
-    <div className="vote-buttons">
-      {USERS.map((user) => {
-        const selected = restaurant.voters?.includes(user);
-        return (
-          <button
-            key={user}
-            className={selected ? "selected" : ""}
-            onClick={() => vote(restaurant, user)}
-            disabled={busy}
-          >
-            {selected ? "✓ " : "+ "}
-            {user}
-          </button>
-        );
-      })}
+    <div className={`vote-box ${voters.length === 2 ? "unanimous" : ""}`}>
+      <div className="vote-caption">
+        <Heart size={14} fill={voters.length ? "currentColor" : "none"} />
+        {voters.length === 2
+          ? "兩個人都想吃！"
+          : voters.length === 1
+            ? `${voters[0]}想吃`
+            : "今天誰想吃？"}
+      </div>
+      <div className="vote-buttons">
+        {USERS.map((user) => {
+          const selected = voters.includes(user);
+          return (
+            <button
+              key={user}
+              aria-pressed={selected}
+              className={
+                selected ? `selected ${user === "威威" ? "wei" : "su"}` : ""
+              }
+              onClick={() => vote(restaurant, user)}
+              disabled={busy}
+            >
+              <span className="voter-avatar">
+                {user === "威威" ? "威" : "蘇"}
+              </span>
+              <span>
+                <strong>{user}</strong>
+                <small>{selected ? "已選這間" : "我想吃"}</small>
+              </span>
+              <span className="vote-mark">{selected ? "✓" : "+"}</span>
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }

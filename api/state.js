@@ -54,6 +54,14 @@ function googleMapsUrl(value) {
     throw new Error("請使用 Google Maps 的 HTTPS 連結");
   return url;
 }
+function cleanPlaceName(value) {
+  const original = String(value || "").trim();
+  const withoutAddress = original.replace(
+    /^\d{3,5}\s*[^號]{2,100}號(?:之\d+)?(?:\s*\d+樓)?\s*/,
+    "",
+  );
+  return withoutAddress || original;
+}
 async function restaurantFromGoogleMaps(mapUrl) {
   const original = googleMapsUrl(mapUrl);
   const response = await fetch(original, {
@@ -61,19 +69,16 @@ async function restaurantFromGoogleMaps(mapUrl) {
     headers: { "User-Agent": "Mozilla/5.0 WhatToEat/1.0" },
   });
   googleMapsUrl(response.url);
-  let name = response.url.match(/\/maps\/place\/([^/]+)/)?.[1];
-  if (name) name = decodeURIComponent(name.replace(/\+/g, " ")).trim();
-  if (!name) {
-    const html = await response.text();
-    name =
-      html.match(
-        /<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)/i,
-      )?.[1] || html.match(/<title>([^<]+)<\/title>/i)?.[1];
-    name = name
-      ?.replace(/&amp;/g, "&")
-      .replace(/\s*[-–]\s*Google Maps.*$/i, "")
-      .trim();
-  }
+  const html = await response.text();
+  const metaTag = html.match(
+    /<meta[^>]+(?:property|name)=["']og:title["'][^>]*>/i,
+  )?.[0];
+  let name = metaTag?.match(/content=["']([^"']+)/i)?.[1];
+  if (!name) name = response.url.match(/\/maps\/place\/([^/]+)/)?.[1];
+  if (name) name = decodeURIComponent(name.replace(/\+/g, " "));
+  name = cleanPlaceName(
+    name?.replace(/&amp;/g, "&").replace(/\s*[-–]\s*Google Maps.*$/i, ""),
+  );
   if (!response.ok || !name || name === "Google Maps")
     throw new Error("無法從這個連結取得餐廳名稱，請改用下方手動新增");
   return cleanRestaurant({
@@ -100,12 +105,22 @@ async function getState() {
     .map(JSON.parse)
     .map((item) => {
       const voters = USERS.filter((user) => selections[user].has(item.id));
-      return { ...item, voters, votes: voters.length };
+      return {
+        ...item,
+        name: cleanPlaceName(item.name),
+        voters,
+        votes: voters.length,
+      };
     })
     .sort(
       (a, b) => b.votes - a.votes || a.name.localeCompare(b.name, "zh-Hant"),
     );
-  return { restaurants, history: (rawHistory || []).map(JSON.parse) };
+  return {
+    restaurants,
+    history: (rawHistory || [])
+      .map(JSON.parse)
+      .map((item) => ({ ...item, name: cleanPlaceName(item.name) })),
+  };
 }
 function cleanRestaurant(body) {
   const name = String(body.name || "")

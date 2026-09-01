@@ -723,41 +723,100 @@ h1 {
   min-width: 190px;
   margin: 0;
 }
-.vote-buttons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 9px;
+.vote-box {
+  margin-top: 12px;
+  padding: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.18);
 }
-.vote-buttons button {
-  width: auto;
-  min-height: 31px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 999px;
-  padding: 5px 10px;
-  color: #a99c91;
-  background: rgba(255, 255, 255, 0.055);
+.vote-caption {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 2px 8px;
+  color: #91857c;
   font-size: 0.72rem;
   font-weight: 800;
+}
+.vote-box.unanimous .vote-caption {
+  color: #fbbf24;
+}
+.vote-buttons {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.vote-buttons button {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 12px;
+  padding: 9px;
+  color: #b9aea5;
+  background: rgba(255, 255, 255, 0.045);
+  text-align: left;
   cursor: pointer;
-  transition: 0.2s;
+  transition:
+    transform 0.2s,
+    border-color 0.2s,
+    background 0.2s;
 }
 .vote-buttons button:hover {
-  color: #fed7aa;
-  border-color: rgba(251, 191, 36, 0.3);
+  transform: translateY(-1px);
+  border-color: rgba(251, 191, 36, 0.28);
 }
-.vote-buttons button.selected {
+.voter-avatar {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
   color: #211306;
-  border-color: #fbbf24;
-  background: #fbbf24;
+  background: #d6cdc5;
+  font-size: 0.78rem;
+  font-weight: 950;
 }
-.result-actions > .vote-buttons {
-  justify-content: center;
+.vote-buttons strong,
+.vote-buttons small {
+  display: block;
+}
+.vote-buttons strong {
+  color: inherit;
+  font-size: 0.78rem;
+}
+.vote-buttons small {
+  margin-top: 1px;
+  opacity: 0.7;
+  font-size: 0.62rem;
+}
+.vote-mark {
+  font-size: 1rem;
+  font-weight: 950;
+}
+.vote-buttons button.selected.wei {
+  color: #2d1016;
+  border-color: #fb7185;
+  background: linear-gradient(120deg, #fda4af, #fb7185);
+}
+.vote-buttons button.selected.su {
+  color: #241408;
+  border-color: #fbbf24;
+  background: linear-gradient(120deg, #fed7aa, #fbbf24);
+}
+.vote-buttons button.selected .voter-avatar {
+  color: inherit;
+  background: rgba(255, 255, 255, 0.42);
+}
+.result-actions > .vote-box {
+  flex: 1 1 100%;
   margin: 0;
 }
-.result-actions > .vote-buttons button {
-  min-height: 40px;
-  padding: 8px 15px;
+.result-actions > .vote-box + a {
+  margin-top: 2px;
 }
 .restaurant-row > div:first-child {
   min-width: 0;
@@ -769,6 +828,9 @@ h1 {
   }
   .quick-add-form .secondary-button {
     width: 100%;
+  }
+  .vote-buttons {
+    grid-template-columns: 1fr 1fr;
   }
 }
 .restaurant-list,
