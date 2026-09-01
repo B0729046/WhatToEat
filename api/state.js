@@ -76,8 +76,11 @@ function cleanPlaceName(value) {
   return withoutAddress || original;
 }
 function inferArea(value) {
+  const text = String(value || "");
+  const verified = { 十巷咖哩: "中山區", 今大魯肉飯: "三重區" };
   return (
-    String(value || "").match(/(?:縣|市)([^縣市]{1,6}(?:區|鄉|鎮|市))/)?.[1] ||
+    text.match(/(?:縣|市)([^縣市]{1,6}(?:區|鄉|鎮|市))/)?.[1] ||
+    verified[cleanPlaceName(text)] ||
     "未設定"
   );
 }
