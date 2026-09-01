@@ -95,6 +95,57 @@ function inferCategory(name) {
   ];
   return rules.find(([pattern]) => pattern.test(name))?.[1] || "餐廳";
 }
+function estimatePrice(category) {
+  return (
+    {
+      台式: 150,
+      早餐: 120,
+      日式: 350,
+      義式: 350,
+      韓式: 350,
+      東南亞: 250,
+      鍋物: 500,
+      燒肉: 600,
+      咖啡廳: 250,
+    }[category] || 300
+  );
+}
+async function areaFromCoordinates(html) {
+  const coordinates = [
+    ...html.matchAll(/(\d{2,3}\.\d{4,}),\s*(\d{2}\.\d{4,})/g),
+  ]
+    .map((match) => [Number(match[1]), Number(match[2])])
+    .find(
+      ([longitude, latitude]) =>
+        longitude >= 119 &&
+        longitude <= 123 &&
+        latitude >= 21 &&
+        latitude <= 26,
+    );
+  if (!coordinates) return "未設定";
+  const [longitude, latitude] = coordinates;
+  try {
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}&accept-language=zh-TW`,
+      {
+        headers: {
+          "User-Agent":
+            "WhatToEat/1.0 (https://what-to-eat-chi-pink.vercel.app)",
+        },
+      },
+    );
+    const data = await response.json();
+    return (
+      data.address?.city_district ||
+      data.address?.suburb ||
+      data.address?.town ||
+      data.address?.county ||
+      "未設定"
+    );
+  } catch {
+    return "未設定";
+  }
+}
 async function restaurantFromGoogleMaps(mapUrl) {
   const original = googleMapsUrl(mapUrl);
   const response = await fetch(original, {
@@ -114,12 +165,16 @@ async function restaurantFromGoogleMaps(mapUrl) {
   );
   if (!response.ok || !name || name === "Google Maps")
     throw new Error("無法從這個連結取得餐廳名稱，請改用下方手動新增");
+  const category = inferCategory(name);
+  const addressArea = inferArea(rawName);
   return cleanRestaurant({
     name,
     mapUrl: original.toString(),
-    category: inferCategory(name),
-    area: inferArea(rawName),
-    price: null,
+    category,
+    area:
+      addressArea === "未設定" ? await areaFromCoordinates(html) : addressArea,
+    price: estimatePrice(category),
+    priceEstimated: true,
     meal: ["早餐", "午餐", "晚餐", "宵夜"],
   });
 }
@@ -139,8 +194,12 @@ async function getState() {
   );
   const enrichedRestaurants = await Promise.all(
     storedRestaurants.map(async (item) => {
-      if (item.enrichedAt || !item.mapUrl) return item;
-      let updated = { ...item, enrichedAt: new Date().toISOString() };
+      if (item.enrichmentVersion === 2 || !item.mapUrl) return item;
+      let updated = {
+        ...item,
+        enrichedAt: new Date().toISOString(),
+        enrichmentVersion: 2,
+      };
       try {
         const details = await restaurantFromGoogleMaps(item.mapUrl);
         updated = {
@@ -149,6 +208,7 @@ async function getState() {
           category: details.category,
           area: details.area,
           price: details.price,
+          priceEstimated: details.priceEstimated,
         };
       } catch (error) {
         console.warn(`Unable to enrich ${item.name}:`, error.message);
@@ -161,13 +221,18 @@ async function getState() {
     .map((item) => {
       const voters = USERS.filter((user) => selections[user].has(item.id));
       const name = cleanPlaceName(item.name);
+      const category =
+        item.category === "未分類" ? inferCategory(name) : item.category;
       return {
         ...item,
         name,
-        category:
-          item.category === "未分類" ? inferCategory(name) : item.category,
+        category,
         area: item.area === "未設定" ? inferArea(item.name) : item.area,
-        price: item.price === 0 ? null : item.price,
+        price:
+          item.price == null || item.price === 0
+            ? estimatePrice(category)
+            : item.price,
+        priceEstimated: item.priceEstimated ?? true,
         voters,
         votes: voters.length,
       };
@@ -216,6 +281,7 @@ function cleanRestaurant(body) {
     category,
     area,
     price: price === null ? null : Math.round(price),
+    priceEstimated: Boolean(body.priceEstimated),
     meal,
     mapUrl,
     createdAt: new Date().toISOString(),

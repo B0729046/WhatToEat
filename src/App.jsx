@@ -222,7 +222,9 @@ function Result({ result, rolling, restaurants, vote, busy }) {
           {result.area}
         </span>
         <span>
-          {result.price == null ? "價位未提供" : `約 NT$ ${result.price}`}
+          {result.price == null
+            ? "價位未提供"
+            : `${result.priceEstimated ? "預估" : "約"} NT$ ${result.price}`}
         </span>
         <span>
           <Trophy size={15} />
