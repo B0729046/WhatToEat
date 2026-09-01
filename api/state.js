@@ -6,6 +6,7 @@ const KEYS = {
   restaurants: "whattoeat:restaurants",
   votes: "whattoeat:votes",
   history: "whattoeat:history",
+  meals: "whattoeat:meals",
 };
 const USERS = ["威威", "小蘇蘇"];
 function taipeiDay() {
@@ -207,16 +208,26 @@ async function restaurantFromGoogleMaps(mapUrl) {
   });
 }
 async function getState() {
-  const [rawRestaurants, weiVotes, suVotes, rawHistory] = await Promise.all([
-    redis("HGETALL", KEYS.restaurants),
-    redis("SMEMBERS", voteKey("威威")),
-    redis("SMEMBERS", voteKey("小蘇蘇")),
-    redis("LRANGE", historyKey(), 0, 49),
-  ]);
+  const [rawRestaurants, weiVotes, suVotes, rawHistory, rawMeals] =
+    await Promise.all([
+      redis("HGETALL", KEYS.restaurants),
+      redis("SMEMBERS", voteKey("威威")),
+      redis("SMEMBERS", voteKey("小蘇蘇")),
+      redis("LRANGE", historyKey(), 0, 49),
+      redis("HGETALL", KEYS.meals),
+    ]);
   const selections = {
     威威: new Set(weiVotes || []),
     小蘇蘇: new Set(suVotes || []),
   };
+  const diningHistory = Object.entries(pairs(rawMeals))
+    .map(([date, value]) => ({ ...JSON.parse(value), date }))
+    .sort((a, b) => b.date.localeCompare(a.date));
+  const lastMealByRestaurant = new Map();
+  for (const meal of diningHistory)
+    if (!lastMealByRestaurant.has(meal.restaurantId))
+      lastMealByRestaurant.set(meal.restaurantId, meal);
+  const todayTime = Date.parse(`${taipeiDay()}T00:00:00Z`);
   const storedRestaurants = Object.values(pairs(rawRestaurants)).map(
     JSON.parse,
   );
@@ -251,10 +262,13 @@ async function getState() {
       const name = cleanPlaceName(item.name);
       const category =
         item.category === "未分類" ? inferCategory(name) : item.category;
+      const categories = item.categories?.length ? item.categories : [category];
+      const lastMeal = lastMealByRestaurant.get(item.id);
       return {
         ...item,
         name,
         category,
+        categories,
         area: item.area === "未設定" ? inferArea(item.name) : item.area,
         price:
           item.price == null || item.price === 0
@@ -263,6 +277,12 @@ async function getState() {
         priceEstimated: item.priceEstimated ?? true,
         voters,
         votes: voters.length,
+        lastEatenDate: lastMeal?.date || null,
+        daysSinceEaten: lastMeal
+          ? Math.round(
+              (todayTime - Date.parse(`${lastMeal.date}T00:00:00Z`)) / 86400000,
+            )
+          : null,
       };
     })
     .sort(
@@ -273,6 +293,7 @@ async function getState() {
     history: (rawHistory || [])
       .map(JSON.parse)
       .map((item) => ({ ...item, name: cleanPlaceName(item.name) })),
+    diningHistory,
   };
 }
 function cleanRestaurant(body) {
@@ -336,6 +357,38 @@ export default async function handler(req, res) {
     const raw = await redis("HGET", KEYS.restaurants, id);
     if (!raw) return send(res, 404, { error: "找不到這間餐廳" });
     const restaurant = JSON.parse(raw);
+    if (body.action === "update") {
+      const categories = [
+        ...new Set(
+          (Array.isArray(body.categories) ? body.categories : [])
+            .map((item) => String(item).trim())
+            .filter(Boolean),
+        ),
+      ].slice(0, 8);
+      const price = Number(body.price);
+      if (!categories.length || !Number.isFinite(price) || price < 0)
+        return send(res, 400, { error: "請至少選一個分類並輸入正確價錢" });
+      const updated = {
+        ...restaurant,
+        categories,
+        category: categories[0],
+        price: Math.round(price),
+        priceEstimated: false,
+        updatedAt: new Date().toISOString(),
+      };
+      await redis("HSET", KEYS.restaurants, id, JSON.stringify(updated));
+      return send(res, 200, { restaurant: updated });
+    }
+    if (body.action === "eat") {
+      const date = taipeiDay();
+      const record = {
+        restaurantId: id,
+        name: cleanPlaceName(restaurant.name),
+        createdAt: new Date().toISOString(),
+      };
+      await redis("HSET", KEYS.meals, date, JSON.stringify(record));
+      return send(res, 200, { ...record, date });
+    }
     if (body.action === "delete") {
       await Promise.all([
         redis("HDEL", KEYS.restaurants, id),

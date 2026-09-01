@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import {
+  CalendarDays,
+  Check,
   ChevronDown,
   ExternalLink,
   Heart,
   History,
   MapPin,
+  Pencil,
   RotateCcw,
   Sparkles,
   Trash2,
@@ -12,7 +15,21 @@ import {
   Utensils,
 } from "lucide-react";
 const USERS = ["威威", "小蘇蘇"],
-  ALL = "不限";
+  ALL = "不限",
+  CATEGORY_OPTIONS = [
+    "台式",
+    "日式",
+    "韓式",
+    "義式",
+    "東南亞",
+    "鍋物",
+    "燒肉",
+    "咖啡廳",
+    "早餐",
+    "甜點",
+    "素食",
+    "其他",
+  ];
 function Filter({ label, value, options, onChange }) {
   return (
     <label className="filter-group">
@@ -106,25 +123,58 @@ function VoteButtons({ restaurant, vote, busy }) {
     </div>
   );
 }
-function Ranking({ restaurants, remove, vote, busy }) {
+function lastEatenText(x) {
+  if (x.daysSinceEaten == null) return "還沒吃過";
+  if (x.daysSinceEaten === 0) return "今天吃過";
+  return `距離上次吃 ${x.daysSinceEaten} 天`;
+}
+function Ranking({ restaurants, remove, vote, eat, edit, busy }) {
   return (
-    <div className="panel">
-      <h2>
-        <Trophy size={20} />
-        共享排名
-      </h2>
+    <div className="panel ranking-panel">
+      <div className="ranking-heading">
+        <div>
+          <span className="ranking-kicker">TODAY'S LEADERBOARD</span>
+          <h2>
+            <Trophy size={24} /> 今天想吃排行榜
+          </h2>
+        </div>
+        <span className="ranking-total">{restaurants.length} 間候選</span>
+      </div>
       <div className="restaurant-list">
         {restaurants.length ? (
-          restaurants.map((x) => (
+          restaurants.map((x, index) => (
             <div className="restaurant-row" key={x.id}>
-              <div>
+              <span className={`rank-number rank-${index + 1}`}>
+                {index + 1}
+              </span>
+              <div className="restaurant-main">
                 <strong>{x.name}</strong>
                 <small>
-                  {x.category} · {x.area} · {x.votes} 票
+                  {(x.categories || [x.category]).join("、")} · {x.area} ·{" "}
+                  {x.price == null ? "價位未定" : `NT$ ${x.price}`}
                 </small>
+                <span
+                  className={`last-eaten ${x.daysSinceEaten === 0 ? "today" : ""}`}
+                >
+                  <History size={13} /> {lastEatenText(x)}
+                </span>
                 <VoteButtons restaurant={x} {...{ vote, busy }} />
+                <button
+                  className="eat-button"
+                  onClick={() => eat(x)}
+                  disabled={busy}
+                >
+                  <Check size={16} /> 今天吃這間
+                </button>
               </div>
               <div className="row-actions">
+                <button
+                  onClick={() => edit(x)}
+                  disabled={busy}
+                  aria-label={`編輯 ${x.name}`}
+                >
+                  <Pencil size={17} />
+                </button>
                 {x.mapUrl && (
                   <a
                     href={x.mapUrl}
@@ -196,7 +246,105 @@ function TodayVotes({ restaurants }) {
     </div>
   );
 }
-function Result({ result, rolling, restaurants, vote, busy }) {
+function DiningHistory({ diningHistory }) {
+  return (
+    <div className="panel dining-history-panel">
+      <h2>
+        <CalendarDays size={20} /> 用餐歷史
+      </h2>
+      <div className="dining-history-list">
+        {diningHistory.length ? (
+          diningHistory.map((item) => (
+            <div className="dining-history-row" key={item.date}>
+              <time>
+                {new Date(`${item.date}T00:00:00+08:00`).toLocaleDateString(
+                  "zh-TW",
+                  { month: "short", day: "numeric", weekday: "short" },
+                )}
+              </time>
+              <strong>{item.name}</strong>
+            </div>
+          ))
+        ) : (
+          <p className="muted">還沒有紀錄，選定餐廳後按「今天吃這間」。</p>
+        )}
+      </div>
+    </div>
+  );
+}
+function EditRestaurant({ restaurant, save, close, busy }) {
+  const [categories, setCategories] = useState(
+    restaurant.categories?.length
+      ? restaurant.categories
+      : [restaurant.category],
+  );
+  const [price, setPrice] = useState(restaurant.price ?? "");
+  const toggle = (category) =>
+    setCategories((old) =>
+      old.includes(category)
+        ? old.filter((x) => x !== category)
+        : [...old, category],
+    );
+  return (
+    <div
+      className="modal-backdrop"
+      onMouseDown={(e) => e.target === e.currentTarget && close()}
+    >
+      <form
+        className="edit-modal"
+        onSubmit={(e) => {
+          e.preventDefault();
+          save(restaurant, categories, price);
+        }}
+      >
+        <span className="ranking-kicker">EDIT RESTAURANT</span>
+        <h2>編輯 {restaurant.name}</h2>
+        <label className="edit-label">料理分類（可複選）</label>
+        <div className="category-picker">
+          {CATEGORY_OPTIONS.map((category) => (
+            <button
+              type="button"
+              key={category}
+              className={categories.includes(category) ? "selected" : ""}
+              onClick={() => toggle(category)}
+            >
+              <Check size={14} />
+              {category}
+            </button>
+          ))}
+        </div>
+        <label className="edit-label" htmlFor="edit-price">
+          每人價錢
+        </label>
+        <div className="price-input">
+          <span>NT$</span>
+          <input
+            id="edit-price"
+            type="number"
+            required
+            min="0"
+            step="1"
+            value={price}
+            onChange={(e) => setPrice(e.target.value)}
+            placeholder="例如 350"
+          />
+        </div>
+        <div className="modal-actions">
+          <button type="button" onClick={close}>
+            取消
+          </button>
+          <button
+            className="secondary-button"
+            disabled={busy || !categories.length}
+          >
+            儲存修改
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+function Result({ result, rolling, restaurants, vote, eat, busy }) {
   if (!result)
     return (
       <div className="empty-result">
@@ -215,7 +363,7 @@ function Result({ result, rolling, restaurants, vote, busy }) {
       <div className="result-meta">
         <span>
           <Utensils size={15} />
-          {result.category}
+          {(result.categories || [result.category]).join("、")}
         </span>
         <span>
           <MapPin size={15} />
@@ -237,6 +385,13 @@ function Result({ result, rolling, restaurants, vote, busy }) {
             restaurant={restaurants.find((x) => x.id === result.id) || result}
             {...{ vote, busy }}
           />
+          <button
+            className="eat-button"
+            onClick={() => eat(result)}
+            disabled={busy}
+          >
+            <Check size={16} /> 今天吃這間
+          </button>
           {result.mapUrl && (
             <a href={result.mapUrl} target="_blank" rel="noreferrer">
               Google Maps <ExternalLink size={14} />
@@ -249,6 +404,7 @@ function Result({ result, rolling, restaurants, vote, busy }) {
 }
 export default function App() {
   const [restaurants, setRestaurants] = useState([]),
+    [diningHistory, setDiningHistory] = useState([]),
     [filters, setFilters] = useState({
       budget: ALL,
       category: ALL,
@@ -258,12 +414,14 @@ export default function App() {
     [result, setResult] = useState(null),
     [rolling, setRolling] = useState(false),
     [busy, setBusy] = useState(false),
+    [editing, setEditing] = useState(null),
     [error, setError] = useState(""),
     [message, setMessage] = useState("把選擇困難交給宇宙。");
   const load = async () => {
     try {
       const d = await api();
       setRestaurants(d.restaurants);
+      setDiningHistory(d.diningHistory || []);
       setError("");
     } catch (e) {
       setError(e.message);
@@ -276,7 +434,9 @@ export default function App() {
   }, []);
   const options = useMemo(
     () => ({
-      category: [...new Set(restaurants.map((x) => x.category))],
+      category: [
+        ...new Set(restaurants.flatMap((x) => x.categories || [x.category])),
+      ],
       area: [...new Set(restaurants.map((x) => x.area))],
     }),
     [restaurants],
@@ -285,7 +445,8 @@ export default function App() {
     () =>
       restaurants.filter(
         (x) =>
-          (filters.category === ALL || x.category === filters.category) &&
+          (filters.category === ALL ||
+            (x.categories || [x.category]).includes(filters.category)) &&
           (filters.area === ALL || x.area === filters.area) &&
           (filters.budget === ALL ||
             (x.price != null && x.price <= Number(filters.budget))),
@@ -358,6 +519,27 @@ export default function App() {
         `${voter}${wasSelected ? "取消投給" : "投給"} ${restaurant.name}。`,
       );
   };
+  const eat = async (restaurant) => {
+    if (
+      !confirm(`確定今天吃「${restaurant.name}」？今天若已有紀錄會改成這間。`)
+    )
+      return;
+    if (await mutate({ action: "eat", id: restaurant.id }))
+      setMessage(`已記下今天吃 ${restaurant.name}。`);
+  };
+  const saveEdit = async (restaurant, categories, price) => {
+    if (
+      await mutate({
+        action: "update",
+        id: restaurant.id,
+        categories,
+        price: price === "" ? null : Number(price),
+      })
+    ) {
+      setEditing(null);
+      setMessage(`已更新 ${restaurant.name} 的分類與價錢。`);
+    }
+  };
   return (
     <main className="app-shell">
       <div className="orb orb-one" />
@@ -378,6 +560,16 @@ export default function App() {
           {error}
         </div>
       )}
+      <section className="ranking-spotlight">
+        <Ranking
+          restaurants={restaurants}
+          remove={remove}
+          vote={vote}
+          eat={eat}
+          edit={setEditing}
+          busy={busy}
+        />
+      </section>
       <section className="glass-card">
         <div className="filters">
           <Filter
@@ -403,7 +595,7 @@ export default function App() {
           目前有 <strong>{matches.length}</strong> 個命運候選
         </div>
         <div className="result-stage" aria-live="polite">
-          <Result {...{ result, rolling, restaurants, vote, busy }} />
+          <Result {...{ result, rolling, restaurants, vote, eat, busy }} />
         </div>
         <p className="message">{message}</p>
         <button
@@ -421,9 +613,18 @@ export default function App() {
       </section>
       <section className="community-grid">
         <QuickAdd {...{ mapLink, setMapLink, addFromMap, busy }} />
-        <Ranking {...{ restaurants, remove, vote, busy }} />
         <TodayVotes restaurants={restaurants} />
+        <DiningHistory diningHistory={diningHistory} />
       </section>
+      {editing && (
+        <EditRestaurant
+          key={editing.id}
+          restaurant={editing}
+          save={saveEdit}
+          close={() => setEditing(null)}
+          busy={busy}
+        />
+      )}
       <footer>WHAT TO EAT · 所有人共享同一份名單與票數</footer>
     </main>
   );
