@@ -8,6 +8,7 @@ import {
   MapPin,
   Pencil,
   RotateCcw,
+  Settings,
   Sparkles,
   Trash2,
   Trophy,
@@ -111,7 +112,7 @@ function lastEatenText(x) {
   if (x.daysSinceEaten === 0) return "今天吃過";
   return `距離上次吃 ${x.daysSinceEaten} 天`;
 }
-function Ranking({ restaurants, remove, vote, eat, edit, showDetail, busy }) {
+function Ranking({ restaurants, vote, edit, showDetail, busy }) {
   return (
     <div className="panel ranking-panel">
       <div className="ranking-heading">
@@ -180,13 +181,6 @@ function Ranking({ restaurants, remove, vote, eat, edit, showDetail, busy }) {
                   <History size={13} /> {lastEatenText(x)}
                 </span>
                 <VoteButtons restaurant={x} {...{ vote, busy }} />
-                <button
-                  className="eat-button"
-                  onClick={() => eat(x)}
-                  disabled={busy}
-                >
-                  <Check size={16} /> 今天吃這間
-                </button>
               </div>
               <div className="row-actions">
                 <button
@@ -194,7 +188,7 @@ function Ranking({ restaurants, remove, vote, eat, edit, showDetail, busy }) {
                   disabled={busy}
                   aria-label={`編輯 ${x.name}`}
                 >
-                  <Pencil size={17} />
+                  <Settings size={17} />
                 </button>
                 {x.mapUrl && (
                   <a
@@ -206,13 +200,6 @@ function Ranking({ restaurants, remove, vote, eat, edit, showDetail, busy }) {
                     <MapPin size={17} />
                   </a>
                 )}
-                <button
-                  onClick={() => remove(x)}
-                  disabled={busy}
-                  aria-label={`刪除 ${x.name}`}
-                >
-                  <Trash2 size={17} />
-                </button>
               </div>
             </div>
           ))
@@ -399,7 +386,7 @@ function DetailModal({ restaurant, close }) {
     </div>
   );
 }
-function EditRestaurant({ restaurant, save, close, busy }) {
+function EditRestaurant({ restaurant, save, remove, close, busy }) {
   const [categories, setCategories] = useState(
     restaurant.categories?.length
       ? restaurant.categories
@@ -424,8 +411,8 @@ function EditRestaurant({ restaurant, save, close, busy }) {
           save(restaurant, categories, price);
         }}
       >
-        <span className="ranking-kicker">EDIT RESTAURANT</span>
-        <h2>編輯 {restaurant.name}</h2>
+        <span className="ranking-kicker">MORE SETTINGS</span>
+        <h2>{restaurant.name}・更多設定</h2>
         <label className="edit-label">料理分類（可複選）</label>
         <div className="category-picker">
           {CATEGORY_OPTIONS.map((category) => (
@@ -457,6 +444,14 @@ function EditRestaurant({ restaurant, save, close, busy }) {
           />
         </div>
         <div className="modal-actions">
+          <button
+            type="button"
+            className="danger-button"
+            onClick={() => remove(restaurant)}
+            disabled={busy}
+          >
+            <Trash2 size={15} /> 移除餐廳
+          </button>
           <button type="button" onClick={close}>
             取消
           </button>
@@ -471,7 +466,7 @@ function EditRestaurant({ restaurant, save, close, busy }) {
     </div>
   );
 }
-function Result({ result, rolling, restaurants, vote, eat, busy }) {
+function Result({ result, rolling, restaurants, vote, busy }) {
   if (!result)
     return (
       <div className="empty-result">
@@ -512,13 +507,6 @@ function Result({ result, rolling, restaurants, vote, eat, busy }) {
             restaurant={restaurants.find((x) => x.id === result.id) || result}
             {...{ vote, busy }}
           />
-          <button
-            className="eat-button"
-            onClick={() => eat(result)}
-            disabled={busy}
-          >
-            <Check size={16} /> 今天吃這間
-          </button>
           {result.mapUrl && (
             <a href={result.mapUrl} target="_blank" rel="noreferrer">
               Google Maps <ExternalLink size={14} />
@@ -612,13 +600,13 @@ export default function App() {
     setBusy(true);
     setError("");
     try {
-      await api({
+      const response = await api({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
       await load();
-      return true;
+      return response;
     } catch (e) {
       setError(e.message);
       return false;
@@ -634,27 +622,41 @@ export default function App() {
     }
   };
   const remove = async (x) => {
-    if (
-      confirm(`確定刪除「${x.name}」？票數也會一起刪除。`) &&
-      (await mutate({ action: "delete", id: x.id })) &&
-      result?.id === x.id
-    )
-      setResult(null);
+    if (!confirm(`確定刪除「${x.name}」？票數也會一起刪除。`)) return;
+    if (await mutate({ action: "delete", id: x.id })) {
+      if (result?.id === x.id) setResult(null);
+      setEditing(null);
+    }
   };
   const vote = async (restaurant, voter) => {
     const wasSelected = restaurant.voters?.includes(voter);
-    if (await mutate({ action: "vote", id: restaurant.id, voter }))
+    const before = restaurants;
+    setRestaurants((current) =>
+      current
+        .map((item) => {
+          if (item.id !== restaurant.id) return item;
+          const voters = wasSelected
+            ? (item.voters || []).filter((name) => name !== voter)
+            : [...(item.voters || []), voter];
+          return { ...item, voters, votes: voters.length };
+        })
+        .sort(
+          (a, b) =>
+            b.votes - a.votes || a.name.localeCompare(b.name, "zh-Hant"),
+        ),
+    );
+    const response = await mutate({
+      action: "vote",
+      id: restaurant.id,
+      voter,
+    });
+    if (response)
       setMessage(
-        `${voter}${wasSelected ? "取消投給" : "投給"} ${restaurant.name}。`,
+        response.todayChoice
+          ? `${voter}${wasSelected ? "取消投給" : "投給"} ${restaurant.name}；今日選擇是 ${response.todayChoice.name}。`
+          : `${voter}取消投票，目前沒有今日選擇。`,
       );
-  };
-  const eat = async (restaurant) => {
-    if (
-      !confirm(`確定今天吃「${restaurant.name}」？今天若已有紀錄會改成這間。`)
-    )
-      return;
-    if (await mutate({ action: "eat", id: restaurant.id }))
-      setMessage(`已記下今天吃 ${restaurant.name}。`);
+    else setRestaurants(before);
   };
   const saveEdit = async (restaurant, categories, price) => {
     if (
@@ -712,9 +714,7 @@ export default function App() {
       <section className="ranking-spotlight">
         <Ranking
           restaurants={restaurants}
-          remove={remove}
           vote={vote}
-          eat={eat}
           edit={setEditing}
           showDetail={setDetail}
           busy={busy}
@@ -745,7 +745,7 @@ export default function App() {
           目前有 <strong>{matches.length}</strong> 個命運候選
         </div>
         <div className="result-stage" aria-live="polite">
-          <Result {...{ result, rolling, restaurants, vote, eat, busy }} />
+          <Result {...{ result, rolling, restaurants, vote, busy }} />
         </div>
         <p className="message">{message}</p>
         <button
@@ -774,6 +774,7 @@ export default function App() {
           key={editing.id}
           restaurant={editing}
           save={saveEdit}
+          remove={remove}
           close={() => setEditing(null)}
           busy={busy}
         />

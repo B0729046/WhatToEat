@@ -451,7 +451,29 @@ export default async function handler(req, res) {
         redis("EXPIRE", historyKey(), 259200),
         redis("EXPIRE", voteKey(voter), 259200),
       ]);
-      return send(res, 200, { selected: !wasSelected, record });
+      const state = await getState();
+      const winner = state.restaurants.find((item) => item.votes > 0);
+      let todayChoice = null;
+      if (winner) {
+        todayChoice = {
+          restaurantId: winner.id,
+          name: cleanPlaceName(winner.name),
+          createdAt: new Date().toISOString(),
+        };
+        await redis(
+          "HSET",
+          KEYS.meals,
+          taipeiDay(),
+          JSON.stringify(todayChoice),
+        );
+      } else {
+        await redis("HDEL", KEYS.meals, taipeiDay());
+      }
+      return send(res, 200, {
+        selected: !wasSelected,
+        record,
+        todayChoice,
+      });
     }
     return send(res, 400, { error: "不支援的操作" });
   } catch (error) {
