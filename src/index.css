@@ -211,6 +211,27 @@
 }
 
 /* Final hero scale */
+.last-visit {
+  position: relative;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 18px;
+  padding: 8px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 999px;
+  color: #a99c91;
+  background: rgba(13, 11, 10, 0.52);
+  backdrop-filter: blur(10px);
+  font-size: 0.72rem;
+}
+.last-visit svg {
+  color: #fbbf24;
+}
+.last-visit + .ranking-spotlight {
+  margin-top: 16px;
+}
 .hero h1 {
   margin-top: 0;
   font-size: clamp(2.8rem, 6vw, 4.2rem);

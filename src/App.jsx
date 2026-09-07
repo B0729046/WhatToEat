@@ -4,6 +4,7 @@ import {
   Check,
   ChevronDown,
   ExternalLink,
+  Eye,
   History,
   MapPin,
   Pencil,
@@ -112,7 +113,38 @@ function lastEatenText(x) {
   if (x.daysSinceEaten === 0) return "今天吃過";
   return `距離上次吃 ${x.daysSinceEaten} 天`;
 }
+function visitText(visit, now) {
+  if (!visit?.visitedAt) return "尚無稽查紀錄";
+  const minutes = Math.max(
+    0,
+    Math.floor((now - new Date(visit.visitedAt).getTime()) / 60000),
+  );
+  const ago =
+    minutes < 1
+      ? "剛剛"
+      : minutes < 60
+        ? `${minutes} 分鐘前`
+        : minutes < 1440
+          ? `${Math.floor(minutes / 60)} 小時前`
+          : `${Math.floor(minutes / 1440)} 天前`;
+  return `${visit.voter} ${ago}稽查過投票結果`;
+}
+function LastVisit({ visit, now }) {
+  return (
+    <div className="last-visit">
+      <Eye size={15} />
+      {visitText(visit, now)}
+    </div>
+  );
+}
 function Ranking({ restaurants, vote, edit, showDetail, busy }) {
+  const ranks = restaurants.map((restaurant, index) =>
+    index > 0 && restaurant.votes === restaurants[index - 1].votes
+      ? null
+      : index + 1,
+  );
+  for (let index = 1; index < ranks.length; index += 1)
+    if (ranks[index] === null) ranks[index] = ranks[index - 1];
   return (
     <div className="panel ranking-panel">
       <div className="ranking-heading">
@@ -169,8 +201,8 @@ function Ranking({ restaurants, vote, edit, showDetail, busy }) {
               }}
               onContextMenu={(e) => e.preventDefault()}
             >
-              <span className={`rank-number rank-${index + 1}`}>
-                {index + 1}
+              <span className={`rank-number rank-${ranks[index]}`}>
+                {ranks[index]}
               </span>
               <div className="restaurant-main">
                 <strong>{x.name}</strong>
@@ -521,6 +553,8 @@ export default function App() {
   const toastTimer = useRef(null);
   const [restaurants, setRestaurants] = useState([]),
     [diningHistory, setDiningHistory] = useState([]),
+    [lastVisit, setLastVisit] = useState(null),
+    [now, setNow] = useState(Date.now()),
     [filters, setFilters] = useState({
       budget: ALL,
       category: ALL,
@@ -541,7 +575,9 @@ export default function App() {
       const d = await api();
       setRestaurants(d.restaurants);
       setDiningHistory(d.diningHistory || []);
+      setLastVisit(d.lastVisit || null);
       setError("");
+      return d;
     } catch (e) {
       setError(e.message);
     }
@@ -549,7 +585,22 @@ export default function App() {
   // Initial fetch synchronizes this client with the shared Redis state.
   // oxlint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    void load();
+    void (async () => {
+      await load();
+      try {
+        const voter = localStorage.getItem("whattoeat:voter");
+        if (USERS.includes(voter))
+          await api({
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "visit", voter }),
+          });
+      } catch {
+        // Browsers may disable local storage; voting still works normally.
+      }
+    })();
+    const clock = setInterval(() => setNow(Date.now()), 60000);
+    return () => clearInterval(clock);
   }, []);
   const options = useMemo(
     () => ({
@@ -641,6 +692,11 @@ export default function App() {
       clearTimeout(toastTimer.current);
       setToast("");
     }
+    try {
+      localStorage.setItem("whattoeat:voter", voter);
+    } catch {
+      // Identity memory is optional.
+    }
     setRestaurants((current) =>
       current
         .map((item) => {
@@ -717,6 +773,7 @@ export default function App() {
           {error}
         </div>
       )}
+      <LastVisit visit={lastVisit} now={now} />
       {toast && <div className="vote-toast">{toast}</div>}
       <section className="ranking-spotlight">
         <Ranking

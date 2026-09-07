@@ -7,6 +7,7 @@ const KEYS = {
   votes: "whattoeat:votes",
   history: "whattoeat:history",
   meals: "whattoeat:meals",
+  lastVisit: "whattoeat:lastVisit",
 };
 const USERS = ["威威", "小蘇蘇"];
 function taipeiDay() {
@@ -251,14 +252,21 @@ async function restaurantFromGoogleMaps(mapUrl) {
   });
 }
 async function getState() {
-  const [rawRestaurants, weiVotes, suVotes, rawHistory, rawMeals] =
-    await Promise.all([
-      redis("HGETALL", KEYS.restaurants),
-      redis("SMEMBERS", voteKey("威威")),
-      redis("SMEMBERS", voteKey("小蘇蘇")),
-      redis("LRANGE", historyKey(), 0, 49),
-      redis("HGETALL", KEYS.meals),
-    ]);
+  const [
+    rawRestaurants,
+    weiVotes,
+    suVotes,
+    rawHistory,
+    rawMeals,
+    rawLastVisit,
+  ] = await Promise.all([
+    redis("HGETALL", KEYS.restaurants),
+    redis("SMEMBERS", voteKey("威威")),
+    redis("SMEMBERS", voteKey("小蘇蘇")),
+    redis("LRANGE", historyKey(), 0, 49),
+    redis("HGETALL", KEYS.meals),
+    redis("GET", KEYS.lastVisit),
+  ]);
   const selections = {
     威威: new Set(weiVotes || []),
     小蘇蘇: new Set(suVotes || []),
@@ -337,6 +345,7 @@ async function getState() {
       .map(JSON.parse)
       .map((item) => ({ ...item, name: cleanPlaceName(item.name) })),
     diningHistory,
+    lastVisit: rawLastVisit ? JSON.parse(rawLastVisit) : null,
   };
 }
 function cleanRestaurant(body) {
@@ -394,6 +403,14 @@ export default async function handler(req, res) {
         JSON.stringify(restaurant),
       );
       return send(res, 201, { restaurant });
+    }
+    if (body.action === "visit") {
+      const voter = String(body.voter || "");
+      if (!USERS.includes(voter))
+        return send(res, 400, { error: "無法辨識稽查者" });
+      const visit = { voter, visitedAt: new Date().toISOString() };
+      await redis("SET", KEYS.lastVisit, JSON.stringify(visit));
+      return send(res, 200, { lastVisit: visit });
     }
     if (body.action === "deleteMeal") {
       const date = String(body.date || "");
@@ -488,6 +505,11 @@ export default async function handler(req, res) {
         action: wasSelected ? "remove" : "add",
         createdAt: new Date().toISOString(),
       };
+      await redis(
+        "SET",
+        KEYS.lastVisit,
+        JSON.stringify({ voter, visitedAt: new Date().toISOString() }),
+      );
       await redis("LPUSH", historyKey(), JSON.stringify(record));
       await redis("LTRIM", historyKey(), 0, 49);
       await Promise.all([
