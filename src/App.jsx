@@ -718,9 +718,7 @@ export default function App() {
     });
     if (response)
       setMessage(
-        response.todayChoice
-          ? `${voter}${wasSelected ? "取消投給" : "投給"} ${restaurant.name}；今日選擇是 ${response.todayChoice.name}。`
-          : `${voter}取消投票，目前沒有今日選擇。`,
+        `${voter}${wasSelected ? "取消投給" : "投給"} ${restaurant.name}。`,
       );
     else setRestaurants(before);
   };

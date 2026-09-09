@@ -24,3 +24,18 @@
 - `npm run build`：建立正式版前端
 - `npm run lint`：檢查程式碼
 - `npm run preview`：預覽已建置的前端（不包含 API）
+
+# LINE 投票速報與每日結算
+
+Vercel Cron 會執行兩個排程：
+
+- 台北時間 17:30 左右呼叫 `/api/notify`，透過 LINE Messaging API 推播目前最高票。
+- 台北午夜後呼叫 `/api/finalize`，將前一天最高票餐廳寫入用餐紀錄。
+
+請在 Vercel 設定以下環境變數：
+
+- `LINE_CHANNEL_ACCESS_TOKEN`：LINE Messaging API channel access token。
+- `LINE_TARGET_ID`：接收推播的 LINE user ID 或 group ID。
+- `CRON_SECRET`：保護 LINE 推播排程端點的隨機密鑰。
+
+LINE Notify 已停止服務，本專案改用 LINE Official Account 的 Messaging API。
