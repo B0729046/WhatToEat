@@ -423,6 +423,29 @@ export default async function handler(req, res) {
       await redis("HDEL", KEYS.meals, date);
       return send(res, 200, { ok: true });
     }
+    if (body.action === "addMeal") {
+      const date = String(body.date || "");
+      const restaurantId = String(body.restaurantId || "");
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date))
+        return send(res, 400, { error: "用餐日期格式不正確" });
+      if (await redis("HGET", KEYS.meals, date))
+        return send(res, 409, { error: "這一天已有用餐紀錄，請改用更正功能" });
+      const mealRestaurantRaw = await redis(
+        "HGET",
+        KEYS.restaurants,
+        restaurantId,
+      );
+      if (!mealRestaurantRaw)
+        return send(res, 404, { error: "找不到這間餐廳" });
+      const mealRestaurant = JSON.parse(mealRestaurantRaw);
+      const record = {
+        restaurantId,
+        name: cleanPlaceName(mealRestaurant.name),
+        createdAt: new Date().toISOString(),
+      };
+      await redis("HSET", KEYS.meals, date, JSON.stringify(record));
+      return send(res, 201, { ...record, date });
+    }
     if (body.action === "updateMeal") {
       const date = String(body.date || "");
       const newDate = String(body.newDate || "");

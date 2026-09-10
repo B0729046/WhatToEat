@@ -288,12 +288,17 @@ function TodayVotes({ restaurants }) {
     </div>
   );
 }
-function DiningHistory({ diningHistory, editMeal }) {
+function DiningHistory({ diningHistory, editMeal, addMeal }) {
   return (
     <div className="panel dining-history-panel">
-      <h2>
-        <CalendarDays size={20} /> 用餐歷史
-      </h2>
+      <div className="history-heading">
+        <h2>
+          <CalendarDays size={20} /> 用餐歷史
+        </h2>
+        <button className="history-add-button" onClick={addMeal}>
+          ＋ 新增紀錄
+        </button>
+      </div>
       <div className="dining-history-list">
         {diningHistory.length ? (
           diningHistory.map((item) => (
@@ -314,6 +319,68 @@ function DiningHistory({ diningHistory, editMeal }) {
           <p className="muted">還沒有紀錄，選定餐廳後按「今天吃這間」。</p>
         )}
       </div>
+    </div>
+  );
+}
+function AddMealEditor({ restaurants, save, close, busy }) {
+  const today = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Taipei",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+  const [date, setDate] = useState(today);
+  const [restaurantId, setRestaurantId] = useState(restaurants[0]?.id || "");
+  return (
+    <div
+      className="modal-backdrop"
+      onMouseDown={(e) => e.target === e.currentTarget && close()}
+    >
+      <form
+        className="edit-modal"
+        onSubmit={(e) => {
+          e.preventDefault();
+          save(date, restaurantId);
+        }}
+      >
+        <span className="ranking-kicker">ADD DINING HISTORY</span>
+        <h2>新增用餐紀錄</h2>
+        <label className="edit-label" htmlFor="new-meal-date">
+          日期
+        </label>
+        <input
+          className="modal-input"
+          id="new-meal-date"
+          type="date"
+          required
+          value={date}
+          onChange={(e) => setDate(e.target.value)}
+        />
+        <label className="edit-label" htmlFor="new-meal-restaurant">
+          餐廳
+        </label>
+        <select
+          className="modal-input"
+          id="new-meal-restaurant"
+          required
+          value={restaurantId}
+          onChange={(e) => setRestaurantId(e.target.value)}
+        >
+          {restaurants.map((x) => (
+            <option key={x.id} value={x.id}>
+              {x.name}
+            </option>
+          ))}
+        </select>
+        <div className="meal-modal-actions add-meal-actions">
+          <button type="button" onClick={close}>
+            取消
+          </button>
+          <button className="secondary-button" disabled={busy || !restaurantId}>
+            新增紀錄
+          </button>
+        </div>
+      </form>
     </div>
   );
 }
@@ -583,6 +650,7 @@ export default function App() {
     [busy, setBusy] = useState(false),
     [editing, setEditing] = useState(null),
     [editingMeal, setEditingMeal] = useState(null),
+    [addingMeal, setAddingMeal] = useState(false),
     [page, setPage] = useState("home"),
     [menuOpen, setMenuOpen] = useState(false),
     [detail, setDetail] = useState(null),
@@ -768,6 +836,12 @@ export default function App() {
       setMessage("用餐紀錄已更正。");
     }
   };
+  const addMeal = async (date, restaurantId) => {
+    if (await mutate({ action: "addMeal", date, restaurantId })) {
+      setAddingMeal(false);
+      setMessage("用餐紀錄已新增。");
+    }
+  };
   const removeMeal = async (meal) => {
     if (!confirm(`確定刪除 ${meal.date} 的「${meal.name}」用餐紀錄？`)) return;
     if (await mutate({ action: "deleteMeal", date: meal.date })) {
@@ -893,6 +967,7 @@ export default function App() {
           <DiningHistory
             diningHistory={diningHistory}
             editMeal={setEditingMeal}
+            addMeal={() => setAddingMeal(true)}
           />
         </section>
       )}
@@ -914,6 +989,14 @@ export default function App() {
           save={saveMeal}
           remove={removeMeal}
           close={() => setEditingMeal(null)}
+          busy={busy}
+        />
+      )}
+      {addingMeal && (
+        <AddMealEditor
+          restaurants={restaurants}
+          save={addMeal}
+          close={() => setAddingMeal(false)}
           busy={busy}
         />
       )}
