@@ -117,10 +117,7 @@ async function handleEvent(event) {
         "\u4f60\u81ea\u5df1\u90fd\u9084\u6c92\u6295\uff0c\u5148\u9078\u597d\u518d\u4f86\u50ac\u4eba\u3002",
       );
     } else if (status.counts[other] > 0) {
-      await replyLineMessage(
-        event.replyToken,
-        "\u5169\u500b\u4eba\u90fd\u6295\u5b8c\u4e86\u9084\u50ac\uff0c\u4f60\u5011\u53ea\u662f\u60f3\u627e\u6211\u804a\u5929\u5427\u3002",
-      );
+      await replyLineMessage(event.replyToken, battleText(status));
     } else {
       const otherTarget = await lineTargetForUser(other);
       const nudge =
