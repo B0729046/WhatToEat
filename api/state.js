@@ -361,7 +361,8 @@ function cleanRestaurant(body) {
     price = body.price == null || body.price === "" ? null : Number(body.price),
     mapUrl = String(body.mapUrl || "")
       .trim()
-      .slice(0, 500);
+      .slice(0, 500),
+    closingTime = String(body.closingTime || "").trim();
   const meal = [
     ...new Set(
       (Array.isArray(body.meal) ? body.meal : []).map(String).filter(Boolean),
@@ -385,6 +386,9 @@ function cleanRestaurant(body) {
     priceEstimated: Boolean(body.priceEstimated),
     meal,
     mapUrl,
+    closingTime: /^([01]\d|2[0-3]):[0-5]\d$/.test(closingTime)
+      ? closingTime
+      : "",
     createdAt: new Date().toISOString(),
   };
 }
@@ -459,14 +463,18 @@ export default async function handler(req, res) {
         ),
       ].slice(0, 8);
       const price = Number(body.price);
+      const closingTime = String(body.closingTime || "").trim();
       if (!categories.length || !Number.isFinite(price) || price < 0)
         return send(res, 400, { error: "請至少選一個分類並輸入正確價錢" });
+      if (closingTime && !/^([01]\d|2[0-3]):[0-5]\d$/.test(closingTime))
+        return send(res, 400, { error: "關門時間格式不正確" });
       const updated = {
         ...restaurant,
         categories,
         category: categories[0],
         price: Math.round(price),
         priceEstimated: false,
+        closingTime,
         updatedAt: new Date().toISOString(),
       };
       await redis("HSET", KEYS.restaurants, id, JSON.stringify(updated));

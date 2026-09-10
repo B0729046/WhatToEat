@@ -1,8 +1,14 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import {
+  battleText,
+  bindLineIdentity,
   isLineSubscribed,
+  lineIdentity,
+  lineTargetForUser,
+  pushLineText,
   replyLineMessage,
   subscribeLineTarget,
+  todayVoteStatus,
   unsubscribeLineTarget,
 } from "./_daily.js";
 
@@ -49,7 +55,16 @@ async function handleEvent(event) {
   }
   if (event.type !== "message" || event.message?.type !== "text") return;
   const command = event.message.text.trim().replace(/\s+/g, "");
-  if (command === "\u8a02\u95b1") {
+  const identityMatch = command.match(
+    /^\u6211\u662f(\u5a01\u5a01|\u5c0f\u8607\u8607)$/,
+  );
+  if (identityMatch) {
+    await bindLineIdentity(target, identityMatch[1]);
+    await replyLineMessage(
+      event.replyToken,
+      `\u8a18\u4f4f\u4e86\uff0c\u4f60\u662f${identityMatch[1]}\u3002\u4e4b\u5f8c\u50ac\u7968\u6703\u7cbe\u6e96\u901a\u77e5\u53e6\u4e00\u4f4d\u3002`,
+    );
+  } else if (command === "\u8a02\u95b1") {
     await subscribeLineTarget(target);
     await replyLineMessage(
       event.replyToken,
@@ -69,6 +84,45 @@ async function handleEvent(event) {
         ? "\u76ee\u524d\u5df2\u8a02\u95b1\u6bcf\u65e5\u6295\u7968\u901f\u5831\u3002"
         : "\u76ee\u524d\u672a\u8a02\u95b1\uff0c\u50b3\u300c\u8a02\u95b1\u300d\u5373\u53ef\u958b\u555f\u3002",
     );
+  } else if (command === "\u6230\u6cc1") {
+    await replyLineMessage(
+      event.replyToken,
+      battleText(await todayVoteStatus()),
+    );
+  } else if (command === "\u50ac\u7968") {
+    const identity = await lineIdentity(target);
+    if (!identity) {
+      await replyLineMessage(
+        event.replyToken,
+        "\u5148\u544a\u8a34\u6211\u4f60\u662f\u8ab0\uff1a\u50b3\u300c\u6211\u662f\u5a01\u5a01\u300d\u6216\u300c\u6211\u662f\u5c0f\u8607\u8607\u300d\u3002",
+      );
+      return;
+    }
+    const status = await todayVoteStatus();
+    const other =
+      identity === "\u5a01\u5a01" ? "\u5c0f\u8607\u8607" : "\u5a01\u5a01";
+    if (status.counts[identity] === 0) {
+      await replyLineMessage(
+        event.replyToken,
+        "\u4f60\u81ea\u5df1\u90fd\u9084\u6c92\u6295\uff0c\u5148\u9078\u597d\u518d\u4f86\u50ac\u4eba\u3002",
+      );
+    } else if (status.counts[other] > 0) {
+      await replyLineMessage(
+        event.replyToken,
+        "\u5169\u500b\u4eba\u90fd\u6295\u5b8c\u4e86\u9084\u50ac\uff0c\u4f60\u5011\u53ea\u662f\u60f3\u627e\u6211\u804a\u5929\u5427\u3002",
+      );
+    } else {
+      const otherTarget = await lineTargetForUser(other);
+      const nudge =
+        identity === "\u5a01\u5a01"
+          ? "\u5a01\u5a01\u6b63\u5728\u7b49\u59b3\u6c7a\u5b9a\u665a\u9910\uff0c\u518d\u4e0d\u6295\u4ed6\u5c31\u8981\u958b\u59cb\u4e82\u9078\u4e86\u3002"
+          : "\u5c0f\u8607\u8607\u5df2\u7d93\u9078\u597d\u4e86\uff0c\u5a01\u5a01\u518d\u4e0d\u6295\u5c31\u8996\u540c\u653e\u68c4\u4eba\u6b0a\u3002";
+      await pushLineText(nudge, otherTarget ? [otherTarget] : undefined);
+      await replyLineMessage(
+        event.replyToken,
+        `\u5df2\u7d93\u5e6b\u4f60\u6233${other}\u4e86\u3002`,
+      );
+    }
   }
 }
 

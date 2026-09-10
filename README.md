@@ -46,3 +46,7 @@ LINE Notify 已停止服務，本專案改用 LINE Official Account 的 Messagin
 `https://what-to-eat-chi-pink.vercel.app/api/line-webhook`
 
 啟用 Webhook 後，加入官方帳號或傳送「訂閱」會加入推播清單；傳送「取消訂閱」會移除；傳送「狀態」可查詢目前狀態。
+
+兩位使用者各自傳送「我是威威」或「我是小蘇蘇」完成身分綁定。傳送「催票」會提醒尚未投票的另一位，傳送「戰況」會即時回覆目前領先、各自票數與共同選擇。
+
+GitHub Actions 會在台北時間 17:00 與 17:25 呼叫催票端點。請在 GitHub repository 的 Settings > Secrets and variables > Actions 新增名為 `CRON_SECRET` 的 Repository secret，值需與 Vercel 的 `CRON_SECRET` 完全相同。

@@ -410,6 +410,10 @@ function DetailModal({ restaurant, close }) {
             <dt>上次吃</dt>
             <dd>{lastEatenText(restaurant)}</dd>
           </div>
+          <div>
+            <dt>關門時間</dt>
+            <dd>{restaurant.closingTime || "尚未設定"}</dd>
+          </div>
         </dl>
         <button className="secondary-button" onClick={close}>
           關閉
@@ -425,6 +429,7 @@ function EditRestaurant({ restaurant, save, remove, close, busy }) {
       : [restaurant.category],
   );
   const [price, setPrice] = useState(restaurant.price ?? "");
+  const [closingTime, setClosingTime] = useState(restaurant.closingTime || "");
   const toggle = (category) =>
     setCategories((old) =>
       old.includes(category)
@@ -440,7 +445,7 @@ function EditRestaurant({ restaurant, save, remove, close, busy }) {
         className="edit-modal"
         onSubmit={(e) => {
           e.preventDefault();
-          save(restaurant, categories, price);
+          save(restaurant, categories, price, closingTime);
         }}
       >
         <span className="ranking-kicker">MORE SETTINGS</span>
@@ -459,6 +464,16 @@ function EditRestaurant({ restaurant, save, remove, close, busy }) {
             </button>
           ))}
         </div>
+        <label className="edit-label" htmlFor="edit-closing-time">
+          關門時間
+        </label>
+        <input
+          className="modal-input"
+          id="edit-closing-time"
+          type="time"
+          value={closingTime}
+          onChange={(event) => setClosingTime(event.target.value)}
+        />
         <label className="edit-label" htmlFor="edit-price">
           每人價錢
         </label>
@@ -722,13 +737,14 @@ export default function App() {
       );
     else setRestaurants(before);
   };
-  const saveEdit = async (restaurant, categories, price) => {
+  const saveEdit = async (restaurant, categories, price, closingTime) => {
     if (
       await mutate({
         action: "update",
         id: restaurant.id,
         categories,
         price: price === "" ? null : Number(price),
+        closingTime,
       })
     ) {
       setEditing(null);
