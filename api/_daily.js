@@ -6,6 +6,8 @@ const USERS = ["\u5a01\u5a01", "\u5c0f\u8607\u8607"];
 const KEYS = {
   restaurants: "whattoeat:restaurants",
   meals: "whattoeat:meals",
+  lineSubscribers: "whattoeat:lineSubscribers",
+  lineTargetMigrated: "whattoeat:lineTargetMigrated",
 };
 
 export function taipeiDay(offsetDays = 0) {
@@ -21,7 +23,7 @@ export function taipeiDay(offsetDays = 0) {
   return `${value.year}-${value.month}-${value.day}`;
 }
 
-async function redis(...command) {
+export async function redis(...command) {
   if (!REST_URL || !REST_TOKEN)
     throw new Error(
       "\u5c1a\u672a\u8a2d\u5b9a Upstash Redis \u74b0\u5883\u8b8a\u6578",
@@ -34,6 +36,72 @@ async function redis(...command) {
   if (!response.ok || payload.error)
     throw new Error(payload.error || "Upstash request failed");
   return payload.result;
+}
+
+export async function subscribeLineTarget(target) {
+  if (!target) throw new Error("Missing LINE target");
+  await redis("SADD", KEYS.lineSubscribers, target);
+}
+
+export async function unsubscribeLineTarget(target) {
+  if (target) await redis("SREM", KEYS.lineSubscribers, target);
+}
+
+export async function isLineSubscribed(target) {
+  return (
+    Boolean(target) &&
+    Number(await redis("SISMEMBER", KEYS.lineSubscribers, target)) === 1
+  );
+}
+
+async function lineTargets() {
+  const legacyTarget = process.env.LINE_TARGET_ID;
+  const migrated = await redis("GET", KEYS.lineTargetMigrated);
+  if (!migrated) {
+    if (legacyTarget) await subscribeLineTarget(legacyTarget);
+    await redis("SET", KEYS.lineTargetMigrated, "1");
+  }
+  return (await redis("SMEMBERS", KEYS.lineSubscribers)) || [];
+}
+
+async function sendLineMessage(target, text) {
+  const token = process.env.LINE_CHANNEL_ACCESS_TOKEN;
+  if (!token) throw new Error("LINE_CHANNEL_ACCESS_TOKEN is not configured");
+  const response = await fetch("https://api.line.me/v2/bot/message/push", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      to: target,
+      messages: [{ type: "text", text }],
+    }),
+  });
+  if (!response.ok)
+    throw new Error(
+      `LINE push failed (${response.status}): ${await response.text()}`,
+    );
+}
+
+export async function replyLineMessage(replyToken, text) {
+  const token = process.env.LINE_CHANNEL_ACCESS_TOKEN;
+  if (!token) throw new Error("LINE_CHANNEL_ACCESS_TOKEN is not configured");
+  const response = await fetch("https://api.line.me/v2/bot/message/reply", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      replyToken,
+      messages: [{ type: "text", text }],
+    }),
+  });
+  if (!response.ok)
+    throw new Error(
+      `LINE reply failed (${response.status}): ${await response.text()}`,
+    );
 }
 
 function pairs(values) {
@@ -121,12 +189,9 @@ export async function finalizePreviousDay() {
 }
 
 export async function pushLineLeaders() {
-  const token = process.env.LINE_CHANNEL_ACCESS_TOKEN;
-  const target = process.env.LINE_TARGET_ID;
-  if (!token || !target)
-    throw new Error(
-      "\u5c1a\u672a\u8a2d\u5b9a LINE_CHANNEL_ACCESS_TOKEN \u6216 LINE_TARGET_ID",
-    );
+  const targets = await lineTargets();
+  if (!targets.length)
+    return { skipped: true, reason: "no-subscribers", subscribers: 0 };
   const { day, highestVotes, leaders } = await currentLeaders();
   const text = leaders.length
     ? [
@@ -139,24 +204,11 @@ export async function pushLineLeaders() {
         "23:59 \u5c07\u81ea\u52d5\u6c7a\u5b9a\u4eca\u65e5\u9910\u5ef3\u3002",
       ].join("\n")
     : "\u{1f37d}\ufe0f 17:30 \u6295\u7968\u901f\u5831\n\u4eca\u5929\u76ee\u524d\u9084\u6c92\u6709\u4eba\u6295\u7968\u3002";
-  const response = await fetch("https://api.line.me/v2/bot/message/push", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      to: target,
-      messages: [{ type: "text", text }],
-    }),
-  });
-  if (!response.ok)
-    throw new Error(
-      `LINE push failed (${response.status}): ${await response.text()}`,
-    );
+  await Promise.all(targets.map((target) => sendLineMessage(target, text)));
   return {
     day,
     leaders: leaders.map((item) => item.name),
     highestVotes,
+    subscribers: targets.length,
   };
 }

@@ -35,7 +35,14 @@ Vercel Cron 會執行兩個排程：
 請在 Vercel 設定以下環境變數：
 
 - `LINE_CHANNEL_ACCESS_TOKEN`：LINE Messaging API channel access token。
-- `LINE_TARGET_ID`：接收推播的 LINE user ID 或 group ID。
+- `LINE_CHANNEL_SECRET`：用來驗證 LINE Webhook 簽章。
+- `LINE_TARGET_ID`：舊版單一接收者，首次執行時會自動搬入訂閱者清單，之後可移除。
 - `CRON_SECRET`：保護 LINE 推播排程端點的隨機密鑰。
 
 LINE Notify 已停止服務，本專案改用 LINE Official Account 的 Messaging API。
+
+在 LINE Developers 將 Webhook URL 設為：
+
+`https://what-to-eat-chi-pink.vercel.app/api/line-webhook`
+
+啟用 Webhook 後，加入官方帳號或傳送「訂閱」會加入推播清單；傳送「取消訂閱」會移除；傳送「狀態」可查詢目前狀態。
