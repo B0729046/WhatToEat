@@ -28,9 +28,7 @@ const USERS = ["威威", "小蘇蘇"],
     "鍋物",
     "燒肉",
     "咖啡廳",
-    "早餐",
     "甜點",
-    "素食",
     "其他",
   ];
 function Filter({ label, value, options, onChange }) {
@@ -86,27 +84,26 @@ function QuickAdd({ mapLink, setMapLink, addFromMap, busy }) {
     </div>
   );
 }
-function VoteButtons({ restaurant, vote, busy }) {
+function VoteButtons({ restaurant, vote, busy, currentVoter, chooseVoter }) {
   const voters = restaurant.voters || [];
+  const selected = currentVoter ? voters.includes(currentVoter) : false;
   return (
     <div className="vote-buttons">
-      {USERS.map((user) => {
-        const selected = voters.includes(user);
-        return (
-          <button
-            key={user}
-            aria-pressed={selected}
-            className={
-              selected ? `selected ${user === "威威" ? "wei" : "su"}` : ""
-            }
-            onClick={() => vote(restaurant, user)}
-            disabled={busy}
-          >
-            <strong>{user}</strong>
-            <span className="vote-mark">{selected ? "✓" : "+"}</span>
-          </button>
-        );
-      })}
+      <button
+        aria-pressed={selected}
+        className={
+          selected ? `selected ${currentVoter === "威威" ? "wei" : "su"}` : ""
+        }
+        onClick={() =>
+          currentVoter
+            ? vote(restaurant, currentVoter)
+            : chooseVoter(restaurant)
+        }
+        disabled={busy}
+      >
+        <strong>{selected ? "已投票" : "投票"}</strong>
+        <span className="vote-mark">{selected ? "✓" : "+"}</span>
+      </button>
     </div>
   );
 }
@@ -139,7 +136,15 @@ function LastVisit({ visit, now }) {
     </div>
   );
 }
-function Ranking({ restaurants, vote, edit, showDetail, busy }) {
+function Ranking({
+  restaurants,
+  vote,
+  edit,
+  showDetail,
+  busy,
+  currentVoter,
+  chooseVoter,
+}) {
   const ranks = restaurants.map((restaurant, index) =>
     index > 0 && restaurant.votes === restaurants[index - 1].votes
       ? null
@@ -214,7 +219,10 @@ function Ranking({ restaurants, vote, edit, showDetail, busy }) {
                 >
                   <History size={13} /> {lastEatenText(x)}
                 </span>
-                <VoteButtons restaurant={x} {...{ vote, busy }} />
+                <VoteButtons
+                  restaurant={x}
+                  {...{ vote, busy, currentVoter, chooseVoter }}
+                />
               </div>
               <div className="row-actions">
                 <button
@@ -582,7 +590,39 @@ function EditRestaurant({ restaurant, save, remove, close, busy }) {
     </div>
   );
 }
-function Result({ result, rolling, restaurants, vote, busy }) {
+function IdentityPicker({ select, close }) {
+  return (
+    <div
+      className="modal-backdrop"
+      onMouseDown={(e) => e.target === e.currentTarget && close()}
+    >
+      <div className="edit-modal identity-modal">
+        <span className="ranking-kicker">WHO ARE YOU</span>
+        <h2>這次是誰投票？</h2>
+        <p>只要選一次，這台裝置之後會自動記住。</p>
+        <div className="identity-options">
+          {USERS.map((user) => (
+            <button key={user} onClick={() => select(user)}>
+              {user}
+            </button>
+          ))}
+        </div>
+        <button className="identity-cancel" onClick={close}>
+          取消
+        </button>
+      </div>
+    </div>
+  );
+}
+function Result({
+  result,
+  rolling,
+  restaurants,
+  vote,
+  busy,
+  currentVoter,
+  chooseVoter,
+}) {
   if (!result)
     return (
       <div className="empty-result">
@@ -621,7 +661,7 @@ function Result({ result, rolling, restaurants, vote, busy }) {
         <div className="result-actions">
           <VoteButtons
             restaurant={restaurants.find((x) => x.id === result.id) || result}
-            {...{ vote, busy }}
+            {...{ vote, busy, currentVoter, chooseVoter }}
           />
           {result.mapUrl && (
             <a href={result.mapUrl} target="_blank" rel="noreferrer">
@@ -651,6 +691,9 @@ export default function App() {
     [editing, setEditing] = useState(null),
     [editingMeal, setEditingMeal] = useState(null),
     [addingMeal, setAddingMeal] = useState(false),
+    [currentVoter, setCurrentVoter] = useState(null),
+    [identityPickerOpen, setIdentityPickerOpen] = useState(false),
+    [pendingVote, setPendingVote] = useState(null),
     [page, setPage] = useState("home"),
     [menuOpen, setMenuOpen] = useState(false),
     [detail, setDetail] = useState(null),
@@ -676,12 +719,14 @@ export default function App() {
       await load();
       try {
         const voter = localStorage.getItem("whattoeat:voter");
-        if (USERS.includes(voter))
+        if (USERS.includes(voter)) {
+          setCurrentVoter(voter);
           await api({
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ action: "visit", voter }),
           });
+        }
       } catch {
         // Browsers may disable local storage; voting still works normally.
       }
@@ -809,6 +854,22 @@ export default function App() {
       );
     else setRestaurants(before);
   };
+  const chooseIdentity = (user) => {
+    try {
+      localStorage.setItem("whattoeat:voter", user);
+    } catch {
+      // Identity still works for this browser session.
+    }
+    setCurrentVoter(user);
+    setIdentityPickerOpen(false);
+    const restaurant = pendingVote;
+    setPendingVote(null);
+    if (restaurant) void vote(restaurant, user);
+  };
+  const requestIdentity = (restaurant = null) => {
+    setPendingVote(restaurant);
+    setIdentityPickerOpen(true);
+  };
   const saveEdit = async (restaurant, categories, price, closingTime) => {
     if (
       await mutate({
@@ -882,6 +943,14 @@ export default function App() {
             >
               <CalendarDays size={18} /> 用餐歷史
             </button>
+            <button
+              onClick={() => {
+                setMenuOpen(false);
+                requestIdentity();
+              }}
+            >
+              <Settings size={18} /> 切換使用者
+            </button>
           </div>
         )}
       </nav>
@@ -914,6 +983,8 @@ export default function App() {
               edit={setEditing}
               showDetail={setDetail}
               busy={busy}
+              currentVoter={currentVoter}
+              chooseVoter={requestIdentity}
             />
           </section>
           <section className="glass-card">
@@ -941,7 +1012,17 @@ export default function App() {
               目前有 <strong>{matches.length}</strong> 個命運候選
             </div>
             <div className="result-stage" aria-live="polite">
-              <Result {...{ result, rolling, restaurants, vote, busy }} />
+              <Result
+                {...{
+                  result,
+                  rolling,
+                  restaurants,
+                  vote,
+                  busy,
+                  currentVoter,
+                  chooseVoter: requestIdentity,
+                }}
+              />
             </div>
             <p className="message">{message}</p>
             <button
@@ -998,6 +1079,15 @@ export default function App() {
           save={addMeal}
           close={() => setAddingMeal(false)}
           busy={busy}
+        />
+      )}
+      {identityPickerOpen && (
+        <IdentityPicker
+          select={chooseIdentity}
+          close={() => {
+            setIdentityPickerOpen(false);
+            setPendingVote(null);
+          }}
         />
       )}
       {detail && (

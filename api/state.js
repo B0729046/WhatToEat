@@ -10,6 +10,7 @@ const KEYS = {
   lastVisit: "whattoeat:lastVisit",
 };
 const USERS = ["威威", "小蘇蘇"];
+const REMOVED_CATEGORIES = new Set(["早餐", "素食"]);
 function taipeiDay() {
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone: "Asia/Taipei",
@@ -311,21 +312,27 @@ async function getState() {
     .map((item) => {
       const voters = USERS.filter((user) => selections[user].has(item.id));
       const name = cleanPlaceName(item.name);
-      const category =
+      const inferredCategory =
         item.category === "未分類" ? inferCategory(name) : item.category;
-      const categories = item.categories?.length ? item.categories : [category];
+      const category = REMOVED_CATEGORIES.has(inferredCategory)
+        ? "其他"
+        : inferredCategory;
+      const categories = (
+        item.categories?.length ? item.categories : [category]
+      ).filter((value) => !REMOVED_CATEGORIES.has(value));
       const lastMeal = lastMealByRestaurant.get(item.id);
       return {
         ...item,
         name,
         category,
-        categories,
+        categories: categories.length ? categories : ["其他"],
         area: item.area === "未設定" ? inferArea(item.name) : item.area,
         price:
           item.price == null || item.price === 0
             ? estimatePrice(category)
             : item.price,
         priceEstimated: item.priceEstimated ?? true,
+        closingTime: item.closingTime || "21:00",
         voters,
         votes: voters.length,
         lastEatenDate: lastMeal?.date || null,
@@ -352,7 +359,7 @@ function cleanRestaurant(body) {
   const name = String(body.name || "")
       .trim()
       .slice(0, 80),
-    category = String(body.category || "")
+    categoryValue = String(body.category || "")
       .trim()
       .slice(0, 30),
     area = String(body.area || "")
@@ -368,6 +375,9 @@ function cleanRestaurant(body) {
       (Array.isArray(body.meal) ? body.meal : []).map(String).filter(Boolean),
     ),
   ];
+  const category = REMOVED_CATEGORIES.has(categoryValue)
+    ? "其他"
+    : categoryValue;
   if (
     !name ||
     !category ||
@@ -388,7 +398,7 @@ function cleanRestaurant(body) {
     mapUrl,
     closingTime: /^([01]\d|2[0-3]):[0-5]\d$/.test(closingTime)
       ? closingTime
-      : "",
+      : "21:00",
     createdAt: new Date().toISOString(),
   };
 }
@@ -482,7 +492,7 @@ export default async function handler(req, res) {
         ...new Set(
           (Array.isArray(body.categories) ? body.categories : [])
             .map((item) => String(item).trim())
-            .filter(Boolean),
+            .filter((item) => item && !REMOVED_CATEGORIES.has(item)),
         ),
       ].slice(0, 8);
       const price = Number(body.price);
@@ -497,7 +507,7 @@ export default async function handler(req, res) {
         category: categories[0],
         price: Math.round(price),
         priceEstimated: false,
-        closingTime,
+        closingTime: closingTime || "21:00",
         updatedAt: new Date().toISOString(),
       };
       await redis("HSET", KEYS.restaurants, id, JSON.stringify(updated));
