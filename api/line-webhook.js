@@ -37,6 +37,12 @@ function sourceTarget(source = {}) {
   return source.userId || source.groupId || source.roomId || "";
 }
 
+const helpText = [
+  "吃什麼勒｜可用功能",
+  "「戰況」查看今日領先餐廳、雙方票數與共同選擇。",
+  "「催票」提醒尚未投票的另一位。",
+].join("\n");
+
 async function handleEvent(event) {
   const target = sourceTarget(event.source);
   if (!target) return;
@@ -45,7 +51,7 @@ async function handleEvent(event) {
     if (event.replyToken)
       await replyLineMessage(
         event.replyToken,
-        "\u5df2\u8a02\u95b1\u300c\u5403\u4ec0\u9ebc\u52d2\u300d\uff0c\u6bcf\u5929 17:30 \u5de6\u53f3\u6703\u6536\u5230\u6295\u7968\u901f\u5831\u3002\n\u50b3\u300c\u53d6\u6d88\u8a02\u95b1\u300d\u53ef\u505c\u6b62\u901a\u77e5\u3002",
+        `已訂閱「吃什麼勒」，每天 17:30 左右會收到投票速報。\n\n${helpText}`,
       );
     return;
   }
@@ -55,6 +61,10 @@ async function handleEvent(event) {
   }
   if (event.type !== "message" || event.message?.type !== "text") return;
   const command = event.message.text.trim().replace(/\s+/g, "");
+  if (["功能", "說明", "help"].includes(command.toLowerCase())) {
+    await replyLineMessage(event.replyToken, helpText);
+    return;
+  }
   const identityMatch = command.match(
     /^\u6211\u662f(\u5a01\u5a01|\u5c0f\u8607\u8607)$/,
   );
@@ -68,7 +78,7 @@ async function handleEvent(event) {
     await subscribeLineTarget(target);
     await replyLineMessage(
       event.replyToken,
-      "\u8a02\u95b1\u6210\u529f\uff01\u6bcf\u5929 17:30 \u5de6\u53f3\u6703\u6536\u5230\u76ee\u524d\u6700\u9ad8\u7968\u9910\u5ef3\u3002",
+      `訂閱成功！每天 17:30 左右會收到目前最高票餐廳。\n\n${helpText}`,
     );
   } else if (command === "\u53d6\u6d88\u8a02\u95b1") {
     await unsubscribeLineTarget(target);

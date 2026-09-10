@@ -7,6 +7,7 @@ import {
   Eye,
   History,
   MapPin,
+  Menu,
   Pencil,
   RotateCcw,
   Settings,
@@ -14,6 +15,7 @@ import {
   Trash2,
   Trophy,
   Utensils,
+  X,
 } from "lucide-react";
 const USERS = ["威威", "小蘇蘇"],
   ALL = "不限",
@@ -581,6 +583,8 @@ export default function App() {
     [busy, setBusy] = useState(false),
     [editing, setEditing] = useState(null),
     [editingMeal, setEditingMeal] = useState(null),
+    [page, setPage] = useState("home"),
+    [menuOpen, setMenuOpen] = useState(false),
     [detail, setDetail] = useState(null),
     [toast, setToast] = useState(""),
     [error, setError] = useState(""),
@@ -775,11 +779,49 @@ export default function App() {
     <main className="app-shell">
       <div className="orb orb-one" />
       <div className="orb orb-two" />
-      <section className="hero">
+      <nav className="app-nav" aria-label="主要選單">
+        <button
+          className="menu-button"
+          onClick={() => setMenuOpen((open) => !open)}
+          aria-expanded={menuOpen}
+        >
+          {menuOpen ? <X size={19} /> : <Menu size={19} />}
+          選單
+        </button>
+        {menuOpen && (
+          <div className="app-menu">
+            <button
+              className={page === "home" ? "active" : ""}
+              onClick={() => {
+                setPage("home");
+                setMenuOpen(false);
+              }}
+            >
+              <Trophy size={18} /> 今日投票
+            </button>
+            <button
+              className={page === "history" ? "active" : ""}
+              onClick={() => {
+                setPage("history");
+                setMenuOpen(false);
+              }}
+            >
+              <CalendarDays size={18} /> 用餐歷史
+            </button>
+          </div>
+        )}
+      </nav>
+      <section className={`hero ${page === "history" ? "history-hero" : ""}`}>
         <h1>
-          今天
-          <br className="mobile-break" />
-          吃什麼？
+          {page === "history" ? (
+            "用餐歷史"
+          ) : (
+            <>
+              今天
+              <br className="mobile-break" />
+              吃什麼？
+            </>
+          )}
         </h1>
       </section>
       {error && (
@@ -787,66 +829,73 @@ export default function App() {
           {error}
         </div>
       )}
-      <LastVisit visit={lastVisit} now={now} />
+      {page === "home" && <LastVisit visit={lastVisit} now={now} />}
       {toast && <div className="vote-toast">{toast}</div>}
-      <section className="ranking-spotlight">
-        <Ranking
-          restaurants={restaurants}
-          vote={vote}
-          edit={setEditing}
-          showDetail={setDetail}
-          busy={busy}
-        />
-      </section>
-      <section className="glass-card">
-        <div className="filters">
-          <Filter
-            label="預算"
-            value={filters.budget}
-            options={["150", "250", "350", "500"]}
-            onChange={(v) => update("budget", v)}
+      {page === "home" ? (
+        <>
+          <section className="ranking-spotlight">
+            <Ranking
+              restaurants={restaurants}
+              vote={vote}
+              edit={setEditing}
+              showDetail={setDetail}
+              busy={busy}
+            />
+          </section>
+          <section className="glass-card">
+            <div className="filters">
+              <Filter
+                label="預算"
+                value={filters.budget}
+                options={["150", "250", "350", "500"]}
+                onChange={(v) => update("budget", v)}
+              />
+              <Filter
+                label="料理"
+                value={filters.category}
+                options={options.category}
+                onChange={(v) => update("category", v)}
+              />
+              <Filter
+                label="地區"
+                value={filters.area}
+                options={options.area}
+                onChange={(v) => update("area", v)}
+              />
+            </div>
+            <div className="match-count">
+              目前有 <strong>{matches.length}</strong> 個命運候選
+            </div>
+            <div className="result-stage" aria-live="polite">
+              <Result {...{ result, rolling, restaurants, vote, busy }} />
+            </div>
+            <p className="message">{message}</p>
+            <button
+              className="decide-button"
+              onClick={decide}
+              disabled={rolling || busy}
+            >
+              {result && !rolling ? (
+                <RotateCcw size={21} />
+              ) : (
+                <Sparkles size={21} />
+              )}{" "}
+              {rolling ? "正在召喚命運…" : result ? "再抽一次" : "幫我決定"}
+            </button>
+          </section>
+          <section className="community-grid">
+            <QuickAdd {...{ mapLink, setMapLink, addFromMap, busy }} />
+            <TodayVotes restaurants={restaurants} />
+          </section>
+        </>
+      ) : (
+        <section className="history-page">
+          <DiningHistory
+            diningHistory={diningHistory}
+            editMeal={setEditingMeal}
           />
-          <Filter
-            label="料理"
-            value={filters.category}
-            options={options.category}
-            onChange={(v) => update("category", v)}
-          />
-          <Filter
-            label="地區"
-            value={filters.area}
-            options={options.area}
-            onChange={(v) => update("area", v)}
-          />
-        </div>
-        <div className="match-count">
-          目前有 <strong>{matches.length}</strong> 個命運候選
-        </div>
-        <div className="result-stage" aria-live="polite">
-          <Result {...{ result, rolling, restaurants, vote, busy }} />
-        </div>
-        <p className="message">{message}</p>
-        <button
-          className="decide-button"
-          onClick={decide}
-          disabled={rolling || busy}
-        >
-          {result && !rolling ? (
-            <RotateCcw size={21} />
-          ) : (
-            <Sparkles size={21} />
-          )}{" "}
-          {rolling ? "正在召喚命運…" : result ? "再抽一次" : "幫我決定"}
-        </button>
-      </section>
-      <section className="community-grid">
-        <QuickAdd {...{ mapLink, setMapLink, addFromMap, busy }} />
-        <TodayVotes restaurants={restaurants} />
-        <DiningHistory
-          diningHistory={diningHistory}
-          editMeal={setEditingMeal}
-        />
-      </section>
+        </section>
+      )}
       {editing && (
         <EditRestaurant
           key={editing.id}
