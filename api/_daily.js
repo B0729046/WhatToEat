@@ -45,7 +45,26 @@ function pairs(values) {
 
 export function authorizeCron(req) {
   const secret = process.env.CRON_SECRET;
-  return Boolean(secret && req.headers.authorization === `Bearer ${secret}`);
+  return Boolean(
+    secret &&
+      (req.headers.authorization === `Bearer ${secret}` ||
+        req.headers["x-cron-secret"] === secret),
+  );
+}
+
+export function cronAuthDiagnostic(req) {
+  const expected = process.env.CRON_SECRET || "";
+  const authorization = String(req.headers.authorization || "");
+  const received = String(
+    req.headers["x-cron-secret"] || authorization.replace(/^Bearer\s+/i, ""),
+  );
+  return {
+    error: "Unauthorized",
+    secretConfigured: Boolean(expected),
+    expectedLength: expected.length,
+    secretReceived: Boolean(received),
+    receivedLength: received.length,
+  };
 }
 
 export async function currentLeaders(day = taipeiDay()) {
