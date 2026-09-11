@@ -488,6 +488,7 @@ export default async function handler(req, res) {
     if (!raw) return send(res, 404, { error: "找不到這間餐廳" });
     const restaurant = JSON.parse(raw);
     if (body.action === "update") {
+      const name = cleanPlaceName(String(body.name || "").trim()).slice(0, 80);
       const categories = [
         ...new Set(
           (Array.isArray(body.categories) ? body.categories : [])
@@ -497,12 +498,15 @@ export default async function handler(req, res) {
       ].slice(0, 8);
       const price = Number(body.price);
       const closingTime = String(body.closingTime || "").trim();
-      if (!categories.length || !Number.isFinite(price) || price < 0)
-        return send(res, 400, { error: "請至少選一個分類並輸入正確價錢" });
+      if (!name || !categories.length || !Number.isFinite(price) || price < 0)
+        return send(res, 400, {
+          error: "請輸入餐廳名稱、至少一個分類與正確價錢",
+        });
       if (closingTime && !/^([01]\d|2[0-3]):[0-5]\d$/.test(closingTime))
         return send(res, 400, { error: "關門時間格式不正確" });
       const updated = {
         ...restaurant,
+        name,
         categories,
         category: categories[0],
         price: Math.round(price),
@@ -510,7 +514,17 @@ export default async function handler(req, res) {
         closingTime: closingTime || "21:00",
         updatedAt: new Date().toISOString(),
       };
-      await redis("HSET", KEYS.restaurants, id, JSON.stringify(updated));
+      const rawMeals = pairs(await redis("HGETALL", KEYS.meals));
+      const mealUpdates = Object.entries(rawMeals).flatMap(([date, value]) => {
+        const meal = JSON.parse(value);
+        return meal.restaurantId === id
+          ? [redis("HSET", KEYS.meals, date, JSON.stringify({ ...meal, name }))]
+          : [];
+      });
+      await Promise.all([
+        redis("HSET", KEYS.restaurants, id, JSON.stringify(updated)),
+        ...mealUpdates,
+      ]);
       return send(res, 200, { restaurant: updated });
     }
     if (body.action === "eat") {

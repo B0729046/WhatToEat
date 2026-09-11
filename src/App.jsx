@@ -500,6 +500,7 @@ function DetailModal({ restaurant, close }) {
   );
 }
 function EditRestaurant({ restaurant, save, remove, close, busy }) {
+  const [name, setName] = useState(restaurant.name);
   const [categories, setCategories] = useState(
     restaurant.categories?.length
       ? restaurant.categories
@@ -522,11 +523,22 @@ function EditRestaurant({ restaurant, save, remove, close, busy }) {
         className="edit-modal"
         onSubmit={(e) => {
           e.preventDefault();
-          save(restaurant, categories, price, closingTime);
+          save(restaurant, name, categories, price, closingTime);
         }}
       >
         <span className="ranking-kicker">MORE SETTINGS</span>
         <h2>{restaurant.name}・更多設定</h2>
+        <label className="edit-label" htmlFor="edit-restaurant-name">
+          餐廳名稱
+        </label>
+        <input
+          className="modal-input"
+          id="edit-restaurant-name"
+          required
+          maxLength="80"
+          value={name}
+          onChange={(event) => setName(event.target.value)}
+        />
         <label className="edit-label">料理分類（可複選）</label>
         <div className="category-picker">
           {CATEGORY_OPTIONS.map((category) => (
@@ -581,7 +593,7 @@ function EditRestaurant({ restaurant, save, remove, close, busy }) {
           </button>
           <button
             className="secondary-button"
-            disabled={busy || !categories.length}
+            disabled={busy || !name.trim() || !categories.length}
           >
             儲存修改
           </button>
@@ -870,18 +882,19 @@ export default function App() {
     setPendingVote(restaurant);
     setIdentityPickerOpen(true);
   };
-  const saveEdit = async (restaurant, categories, price, closingTime) => {
+  const saveEdit = async (restaurant, name, categories, price, closingTime) => {
     if (
       await mutate({
         action: "update",
         id: restaurant.id,
+        name,
         categories,
         price: price === "" ? null : Number(price),
         closingTime,
       })
     ) {
       setEditing(null);
-      setMessage(`已更新 ${restaurant.name} 的分類與價錢。`);
+      setMessage(`已更新 ${name.trim()} 的餐廳資料。`);
     }
   };
   const saveMeal = async (meal, newDate, restaurantId) => {
