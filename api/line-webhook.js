@@ -1,4 +1,5 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
+import { generateAiReply } from "./_ai.js";
 import {
   battleText,
   bindLineIdentity,
@@ -128,6 +129,20 @@ async function handleEvent(event) {
       await replyLineMessage(
         event.replyToken,
         `\u5df2\u7d93\u5e6b\u4f60\u6233${other}\u4e86\u3002`,
+      );
+    }
+  } else {
+    try {
+      const reply = await generateAiReply(event.message.text.trim());
+      await replyLineMessage(
+        event.replyToken,
+        reply || `目前還沒開啟 AI 閒聊。\n\n${helpText}`,
+      );
+    } catch (error) {
+      console.error("Gemini reply failed:", error);
+      await replyLineMessage(
+        event.replyToken,
+        `我剛剛恍神了，先用固定功能吧。\n\n${helpText}`,
       );
     }
   }

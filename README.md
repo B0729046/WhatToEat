@@ -50,3 +50,7 @@ LINE Notify 已停止服務，本專案改用 LINE Official Account 的 Messagin
 兩位使用者各自傳送「我是威威」或「我是小蘇蘇」完成身分綁定。傳送「催票」會提醒尚未投票的另一位，傳送「戰況」會即時回覆目前領先、各自票數與共同選擇。
 
 GitHub Actions 會在台北時間 17:00 與 17:25 呼叫催票端點。請在 GitHub repository 的 Settings > Secrets and variables > Actions 新增名為 `CRON_SECRET` 的 Repository secret，值需與 Vercel 的 `CRON_SECRET` 完全相同。
+
+## Gemini 閒聊
+
+在 Vercel 設定 `GEMINI_API_KEY` 後，LINE 固定指令以外的文字會交給 Gemini 回覆。預設模型為 `gemini-2.5-flash-lite`，可用選填的 `GEMINI_MODEL` 覆寫。只有使用者當次輸入的文字會送往 Gemini，不會傳送 LINE 身分、票數、餐廳或用餐紀錄。
