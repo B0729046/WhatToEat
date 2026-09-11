@@ -400,8 +400,10 @@
   display: grid;
   place-items: center;
   padding: 20px;
+  overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
+  overscroll-behavior-x: none;
   touch-action: pan-y;
   background: rgba(3, 3, 4, 0.78);
   backdrop-filter: blur(10px);
@@ -409,8 +411,11 @@
 .edit-modal {
   width: min(100%, 540px);
   max-height: calc(100dvh - 40px);
+  overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
+  overscroll-behavior-x: none;
+  touch-action: pan-y;
   -webkit-overflow-scrolling: touch;
   padding: 28px;
   border: 1px solid rgba(251, 191, 36, 0.24);
