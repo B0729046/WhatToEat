@@ -1,11 +1,42 @@
 const DEFAULT_MODEL = "gemini-2.5-flash-lite";
+let detectedModel = "";
 
-export async function generateAiReply(message) {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) return null;
-  const model = process.env.GEMINI_MODEL || DEFAULT_MODEL;
+function modelName(value) {
+  return String(value || "").replace(/^models\//, "");
+}
+
+async function detectTextModel(apiKey) {
+  if (detectedModel) return detectedModel;
   const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
+    "https://generativelanguage.googleapis.com/v1beta/models?pageSize=1000",
+    {
+      headers: { "x-goog-api-key": apiKey },
+      signal: AbortSignal.timeout(6000),
+    },
+  );
+  if (!response.ok)
+    throw new Error(`Gemini model list failed (${response.status})`);
+  const data = await response.json();
+  const models = (data.models || [])
+    .filter(
+      (item) =>
+        item.supportedGenerationMethods?.includes("generateContent") &&
+        /gemini/i.test(item.name) &&
+        !/(embedding|image|tts|audio)/i.test(item.name),
+    )
+    .sort((a, b) => {
+      const score = (item) =>
+        /flash-lite/i.test(item.name) ? 0 : /flash/i.test(item.name) ? 1 : 2;
+      return score(a) - score(b);
+    });
+  detectedModel = modelName(models[0]?.name);
+  if (!detectedModel) throw new Error("No Gemini text model is available");
+  return detectedModel;
+}
+
+async function requestReply(apiKey, model, body) {
+  return await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelName(model))}:generateContent`,
     {
       method: "POST",
       headers: {
@@ -13,35 +44,52 @@ export async function generateAiReply(message) {
         "x-goog-api-key": apiKey,
       },
       signal: AbortSignal.timeout(8000),
-      body: JSON.stringify({
-        system_instruction: {
-          parts: [
-            {
-              text: [
-                "你是名叫「吃什麼勒」的 LINE Bot，主要陪一對情侶討論吃飯。",
-                "一律使用繁體中文，口吻自然有趣，最多 120 字。",
-                "可以幽默吐槽但不可羞辱、威脅或刻薄。",
-                "你無法直接讀取票況；使用者要查票況時請叫他輸入「戰況」。",
-                "使用者要提醒另一人投票時請叫他輸入「催票」。",
-                "不要聲稱已執行任何實際操作。",
-              ].join("\n"),
-            },
-          ],
-        },
-        contents: [
-          {
-            role: "user",
-            parts: [{ text: message }],
-          },
-        ],
-        generationConfig: {
-          temperature: 0.85,
-          maxOutputTokens: 180,
-        },
-      }),
+      body: JSON.stringify(body),
     },
   );
-  if (!response.ok) throw new Error(`Gemini API failed (${response.status})`);
+}
+
+export async function generateAiReply(message) {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) return null;
+  let model = process.env.GEMINI_MODEL || detectedModel || DEFAULT_MODEL;
+  const body = {
+    system_instruction: {
+      parts: [
+        {
+          text: [
+            "你是名叫「吃什麼勒」的 LINE Bot，主要陪一對情侶討論吃飯。",
+            "一律使用繁體中文，口吻自然有趣，最多 120 字。",
+            "可以幽默吐槽但不可羞辱、威脅或刻薄。",
+            "你無法直接讀取票況；使用者要查票況時請叫他輸入「戰況」。",
+            "使用者要提醒另一人投票時請叫他輸入「催票」。",
+            "不要聲稱已執行任何實際操作。",
+          ].join("\n"),
+        },
+      ],
+    },
+    contents: [
+      {
+        role: "user",
+        parts: [{ text: message }],
+      },
+    ],
+    generationConfig: {
+      temperature: 0.85,
+      maxOutputTokens: 180,
+    },
+  };
+  let response = await requestReply(apiKey, model, body);
+  if (response.status === 404) {
+    model = await detectTextModel(apiKey);
+    response = await requestReply(apiKey, model, body);
+  }
+  if (!response.ok) {
+    const details = (await response.text()).slice(0, 300);
+    throw new Error(
+      `Gemini API failed (${response.status}) using ${model}: ${details}`,
+    );
+  }
   const data = await response.json();
   const text = data.candidates?.[0]?.content?.parts
     ?.map((part) => part.text || "")
