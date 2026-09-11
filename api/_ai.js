@@ -49,7 +49,7 @@ async function requestReply(apiKey, model, body) {
   );
 }
 
-export async function generateAiReply(message) {
+export async function generateAiReply(message, counterpart = "對方") {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return null;
   let model = process.env.GEMINI_MODEL || detectedModel || DEFAULT_MODEL;
@@ -64,7 +64,7 @@ export async function generateAiReply(message) {
             "可以帶一點俏皮幽默，但不要制式客服腔、過度奉承或堆砌浮誇敬語。",
             "稱呼可自然使用「貴賓」或「您」，不要每句重複稱呼。",
             "每次只對當前使用者說話，禁止稱呼「二位」「兩位」「你們」或把對方與另一半合併稱呼。",
-            "提到另一半時使用第三人稱，例如「您的另一半」，不可把兩人一起當成回覆對象。",
+            `需要提到另一人時，直接稱呼「${counterpart}」，不要說「另一半」或「您的另一半」。`,
             "你無法直接讀取票況；使用者要查票況時請叫他輸入「戰況」。",
             "使用者要提醒另一人投票時請叫他輸入「催票」。",
             "不要聲稱已執行任何實際操作。",

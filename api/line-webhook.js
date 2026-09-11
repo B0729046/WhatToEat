@@ -133,7 +133,17 @@ async function handleEvent(event) {
     }
   } else {
     try {
-      const reply = await generateAiReply(event.message.text.trim());
+      const identity = await lineIdentity(target);
+      const counterpart =
+        identity === "威威"
+          ? "小蘇蘇"
+          : identity === "小蘇蘇"
+            ? "威威"
+            : "對方";
+      const reply = await generateAiReply(
+        event.message.text.trim(),
+        counterpart,
+      );
       await replyLineMessage(
         event.replyToken,
         reply || `目前還沒開啟 AI 閒聊。\n\n${helpText}`,

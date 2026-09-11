@@ -1,0 +1,19 @@
+name: Send one-time LINE apology
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "api/apologize.js"
+      - ".github/workflows/line-apology.yml"
+  workflow_dispatch:
+
+jobs:
+  apologize:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send apology to 小蘇蘇
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          curl --fail-with-body --silent --show-error +            --retry 8 --retry-delay 10 --retry-all-errors +            -X POST +            -H "Authorization: Bearer $CRON_SECRET" +            "https://what-to-eat-chi-pink.vercel.app/api/apologize"
