@@ -25,6 +25,11 @@ export function taipeiDay(offsetDays = 0) {
   return `${value.year}-${value.month}-${value.day}`;
 }
 
+export function isTaipeiWeekday() {
+  const weekday = new Date(`${taipeiDay()}T00:00:00Z`).getUTCDay();
+  return weekday >= 1 && weekday <= 5;
+}
+
 export async function redis(...command) {
   if (!REST_URL || !REST_TOKEN)
     throw new Error(
@@ -243,6 +248,7 @@ export function battleText(status) {
 }
 
 export async function sendScheduledReminder(phase) {
+  if (!isTaipeiWeekday()) return { skipped: true, reason: "weekend" };
   const status = await todayVoteStatus();
   const missing = USERS.filter((user) => status.counts[user] === 0);
   if (!missing.length) return { skipped: true, reason: "everyone-voted" };
@@ -294,6 +300,7 @@ export async function finalizePreviousDay() {
 }
 
 export async function pushLineLeaders() {
+  if (!isTaipeiWeekday()) return { skipped: true, reason: "weekend" };
   const targets = await lineTargets();
   if (!targets.length)
     return { skipped: true, reason: "no-subscribers", subscribers: 0 };
