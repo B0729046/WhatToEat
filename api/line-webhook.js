@@ -39,7 +39,7 @@ function sourceTarget(source = {}) {
 }
 
 const helpText = [
-  "吃什麼勒｜可用功能",
+  "小葉葉｜可用功能",
   "「戰況」查看今日領先餐廳、雙方票數與共同選擇。",
   "「催票」提醒尚未投票的另一位。",
 ].join("\n");
@@ -115,21 +115,22 @@ async function handleEvent(event) {
     if (status.counts[identity] === 0) {
       await replyLineMessage(
         event.replyToken,
-        "\u4f60\u81ea\u5df1\u90fd\u9084\u6c92\u6295\uff0c\u5148\u9078\u597d\u518d\u4f86\u50ac\u4eba\u3002",
+        "請先完成自己的投票，再使用催票功能。",
       );
     } else if (status.counts[other] > 0) {
       await replyLineMessage(event.replyToken, battleText(status));
     } else {
       const otherTarget = await lineTargetForUser(other);
-      const nudge =
-        identity === "\u5a01\u5a01"
-          ? "\u5a01\u5a01\u6b63\u5728\u7b49\u59b3\u6c7a\u5b9a\u665a\u9910\uff0c\u518d\u4e0d\u6295\u4ed6\u5c31\u8981\u958b\u59cb\u4e82\u9078\u4e86\u3002"
-          : "\u5c0f\u8607\u8607\u5df2\u7d93\u9078\u597d\u4e86\uff0c\u5a01\u5a01\u518d\u4e0d\u6295\u5c31\u8996\u540c\u653e\u68c4\u4eba\u6b0a\u3002";
-      await pushLineText(nudge, otherTarget ? [otherTarget] : undefined);
-      await replyLineMessage(
-        event.replyToken,
-        `\u5df2\u7d93\u5e6b\u4f60\u6233${other}\u4e86\u3002`,
-      );
+      if (!otherTarget) {
+        await replyLineMessage(
+          event.replyToken,
+          `${other}尚未綁定 LINE 身分，目前無法單獨提醒。`,
+        );
+        return;
+      }
+      const nudge = `${identity}已完成投票，想請${other}也選擇今天想吃的餐廳。`;
+      await pushLineText(nudge, [otherTarget]);
+      await replyLineMessage(event.replyToken, `已提醒${other}投票。`);
     }
   } else {
     try {
@@ -146,13 +147,13 @@ async function handleEvent(event) {
       );
       await replyLineMessage(
         event.replyToken,
-        reply || `目前還沒開啟 AI 閒聊。\n\n${helpText}`,
+        reply || `小葉葉目前還沒開啟 AI 閒聊。\n\n${helpText}`,
       );
     } catch (error) {
       console.error("Gemini reply failed:", error);
       await replyLineMessage(
         event.replyToken,
-        `我剛剛恍神了，先用固定功能吧。\n\n${helpText}`,
+        `小葉葉暫時無法回答，請稍後再試。\n\n${helpText}`,
       );
     }
   }

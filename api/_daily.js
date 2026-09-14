@@ -259,15 +259,15 @@ export async function sendScheduledReminder(phase) {
   if (missing.length === USERS.length) {
     text =
       phase === "final"
-        ? "\u8ddd\u96e2\u901f\u5831\u53ea\u5269 5 \u5206\u9418\uff0c\u5169\u4f4d\u4f9d\u7136\u90fd\u6c92\u6295\u7968\u3002\u4eca\u5929\u662f\u6253\u7b97\u9760\u611b\u60c5\u6b62\u9913\u55ce\uff1f"
-        : "\u8ddd\u96e2\u901f\u5831\u53ea\u5269 30 \u5206\u9418\uff0c\u4f60\u5011\u5169\u500b\u90fd\u9084\u6c92\u6295\u7968\u3002";
+        ? "距離投票速報只剩 5 分鐘，威威和小蘇蘇今天都還沒投票，記得選擇想吃的餐廳。"
+        : "距離投票速報還有 30 分鐘，威威和小蘇蘇今天都還沒投票。";
   } else {
     const absent = missing[0];
     const voted = USERS.find((user) => user !== absent);
     text =
       phase === "final"
-        ? `\u8ddd\u96e2\u901f\u5831\u53ea\u5269 5 \u5206\u9418\uff0c${absent}\u4ecd\u672a\u6295\u7968\u3002${voted}\u6b63\u9010\u6f38\u5931\u53bb\u8010\u6027\u3002`
-        : `${voted}\u5df2\u7d93\u9078\u597d\u4e86\uff0c${absent}\u4eca\u5929\u662f\u6253\u7b97\u9760\u5149\u5408\u4f5c\u7528\u55ce\uff1f`;
+        ? `距離投票速報只剩 5 分鐘，${absent}今天尚未投票，記得選擇想吃的餐廳。`
+        : `${voted}已經完成投票，${absent}有空時也請選擇今天想吃的餐廳。`;
   }
   const directTargets = (
     await Promise.all(missing.map(lineTargetForUser))
@@ -319,9 +319,9 @@ export async function pushLineLeaders() {
   const leader = leaders[0];
   let comment = "";
   if (leader?.daysSinceEaten != null && leader.daysSinceEaten <= 3)
-    comment = `\n\n\u53c8\u662f${leader.name}\uff1f\u5e97\u54e1\u53ef\u80fd\u5df2\u7d93\u5728\u5e6b\u4f60\u5011\u7559\u4f4d\u5b50\u4e86\u3002`;
+    comment = `\n\n${leader.name}最近 ${leader.daysSinceEaten} 天內吃過。`;
   else if (leader?.daysSinceEaten >= 30)
-    comment = `\n\n${leader.name}\u5df2\u7d93 ${leader.daysSinceEaten} \u5929\u6c92\u88ab\u81e8\u5e78\uff0c\u5b83\u958b\u59cb\u61f7\u7591\u81ea\u5df1\u505a\u932f\u4e86\u4ec0\u9ebc\u3002`;
+    comment = `\n\n${leader.name}已經 ${leader.daysSinceEaten} 天沒吃了。`;
   await pushLineText(text + comment, targets);
   return {
     day,
