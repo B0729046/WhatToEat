@@ -1,3 +1,5 @@
+import { findDuplicateRestaurant, mealDateConflict } from "./state-logic.js";
+
 const REST_URL =
   process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL;
 const REST_TOKEN =
@@ -253,21 +255,14 @@ async function restaurantFromGoogleMaps(mapUrl) {
   });
 }
 async function getState() {
-  const [
-    rawRestaurants,
-    weiVotes,
-    suVotes,
-    rawHistory,
-    rawMeals,
-    rawLastVisit,
-  ] = await Promise.all([
-    redis("HGETALL", KEYS.restaurants),
-    redis("SMEMBERS", voteKey("威威")),
-    redis("SMEMBERS", voteKey("小蘇蘇")),
-    redis("LRANGE", historyKey(), 0, 49),
-    redis("HGETALL", KEYS.meals),
-    redis("GET", KEYS.lastVisit),
-  ]);
+  const [rawRestaurants, weiVotes, suVotes, rawMeals, rawLastVisit] =
+    await Promise.all([
+      redis("HGETALL", KEYS.restaurants),
+      redis("SMEMBERS", voteKey("威威")),
+      redis("SMEMBERS", voteKey("小蘇蘇")),
+      redis("HGETALL", KEYS.meals),
+      redis("GET", KEYS.lastVisit),
+    ]);
   const selections = {
     威威: new Set(weiVotes || []),
     小蘇蘇: new Set(suVotes || []),
@@ -332,7 +327,7 @@ async function getState() {
             ? estimatePrice(category)
             : item.price,
         priceEstimated: item.priceEstimated ?? true,
-        closingTime: item.closingTime || "21:00",
+        closingTime: item.closingTime || "",
         voters,
         votes: voters.length,
         lastEatenDate: lastMeal?.date || null,
@@ -348,9 +343,6 @@ async function getState() {
     );
   return {
     restaurants,
-    history: (rawHistory || [])
-      .map(JSON.parse)
-      .map((item) => ({ ...item, name: cleanPlaceName(item.name) })),
     diningHistory,
     lastVisit: rawLastVisit ? JSON.parse(rawLastVisit) : null,
   };
@@ -398,7 +390,7 @@ function cleanRestaurant(body) {
     mapUrl,
     closingTime: /^([01]\d|2[0-3]):[0-5]\d$/.test(closingTime)
       ? closingTime
-      : "21:00",
+      : "",
     createdAt: new Date().toISOString(),
   };
 }
@@ -410,6 +402,13 @@ export default async function handler(req, res) {
     const body = req.body || {};
     if (body.action === "addFromMapUrl") {
       const restaurant = await restaurantFromGoogleMaps(body.mapUrl);
+      const existing = Object.values(
+        pairs(await redis("HGETALL", KEYS.restaurants)),
+      ).map(JSON.parse);
+      if (findDuplicateRestaurant(existing, restaurant))
+        return send(res, 409, {
+          error: `「${restaurant.name}」已經在共享餐廳清單中`,
+        });
       await redis(
         "HSET",
         KEYS.restaurants,
@@ -465,6 +464,11 @@ export default async function handler(req, res) {
         !/^\d{4}-\d{2}-\d{2}$/.test(newDate)
       )
         return send(res, 400, { error: "用餐日期格式不正確" });
+      const rawMeals = pairs(await redis("HGETALL", KEYS.meals));
+      if (mealDateConflict(rawMeals, date, newDate))
+        return send(res, 409, {
+          error: `${newDate} 已有用餐紀錄，原紀錄未變更`,
+        });
       const mealRestaurantRaw = await redis(
         "HGET",
         KEYS.restaurants,
@@ -497,21 +501,31 @@ export default async function handler(req, res) {
         ),
       ].slice(0, 8);
       const price = Number(body.price);
+      const area = String(body.area || "")
+        .trim()
+        .slice(0, 30);
       const closingTime = String(body.closingTime || "").trim();
-      if (!name || !categories.length || !Number.isFinite(price) || price < 0)
+      if (
+        !name ||
+        !area ||
+        !categories.length ||
+        !Number.isFinite(price) ||
+        price < 0
+      )
         return send(res, 400, {
-          error: "請輸入餐廳名稱、至少一個分類與正確價錢",
+          error: "請輸入餐廳名稱、地區、至少一個分類與正確價錢",
         });
       if (closingTime && !/^([01]\d|2[0-3]):[0-5]\d$/.test(closingTime))
         return send(res, 400, { error: "關門時間格式不正確" });
       const updated = {
         ...restaurant,
         name,
+        area,
         categories,
         category: categories[0],
         price: Math.round(price),
         priceEstimated: false,
-        closingTime: closingTime || "21:00",
+        closingTime,
         updatedAt: new Date().toISOString(),
       };
       const rawMeals = pairs(await redis("HGETALL", KEYS.meals));

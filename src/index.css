@@ -353,23 +353,6 @@
   color: #86efac;
   background: rgba(34, 197, 94, 0.1);
 }
-.eat-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  border: 1px solid rgba(251, 191, 36, 0.3);
-  border-radius: 10px;
-  padding: 8px 11px;
-  color: #fcdca7;
-  background: rgba(251, 191, 36, 0.09);
-  font-weight: 800;
-  cursor: pointer;
-}
-.ranking-panel .eat-button {
-  width: 100%;
-  margin-top: 9px;
-}
 .dining-history-panel {
   grid-column: 1/-1;
 }
@@ -625,15 +608,6 @@ select:focus-visible {
   z-index: 1;
   text-align: center;
   max-width: 720px;
-}
-.eyebrow {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  color: #fbbf24;
-  font-size: 0.72rem;
-  font-weight: 800;
-  letter-spacing: 0.2em;
 }
 h1 {
   margin: 14px 0 10px;
@@ -922,35 +896,6 @@ footer {
 .history-panel {
   grid-column: 1/-1;
 }
-.restaurant-form {
-  display: grid;
-  gap: 10px;
-}
-.restaurant-form input:not([type="checkbox"]) {
-  width: 100%;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 11px;
-  padding: 11px 12px;
-  color: #f8fafc;
-  background: rgba(5, 5, 9, 0.58);
-}
-.form-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-}
-.meal-checks {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  color: #aaa8b4;
-  font-size: 0.82rem;
-}
-.meal-checks label {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
 .secondary-button {
   width: 100%;
   margin-top: 3px;
@@ -1021,9 +966,6 @@ footer {
   .history-panel {
     grid-column: auto;
   }
-  .form-row {
-    grid-template-columns: 1fr;
-  }
   .restaurant-row,
   .history-list > div {
     align-items: flex-start;
@@ -1069,13 +1011,6 @@ body {
 }
 .hero {
   max-width: 680px;
-}
-.eyebrow {
-  padding: 8px 13px;
-  border: 1px solid rgba(251, 191, 36, 0.25);
-  border-radius: 999px;
-  background: rgba(251, 191, 36, 0.07);
-  letter-spacing: 0.16em;
 }
 h1 {
   margin: 20px 0 14px;
@@ -1177,34 +1112,6 @@ h1 {
 .panel h2 svg {
   color: #fbbf24;
 }
-.restaurant-form {
-  gap: 12px;
-}
-.restaurant-form input:not([type="checkbox"]) {
-  min-height: 46px;
-  border-color: rgba(255, 255, 255, 0.12);
-  border-radius: 12px;
-  color: #fffaf1;
-  background: rgba(9, 8, 7, 0.58);
-  transition:
-    border-color 0.2s,
-    box-shadow 0.2s;
-}
-.restaurant-form input:not([type="checkbox"]):focus {
-  outline: 0;
-  border-color: rgba(251, 191, 36, 0.55);
-  box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.09);
-}
-.restaurant-form input::placeholder {
-  color: #746a63;
-}
-.meal-checks {
-  padding: 5px 1px;
-  color: #b9aea5;
-}
-.meal-checks input {
-  accent-color: #f59e0b;
-}
 .secondary-button {
   min-height: 46px;
   border-radius: 13px;
@@ -1214,38 +1121,11 @@ h1 {
 .history-panel {
   grid-column: auto;
 }
-.batch-panel {
-  display: flex;
-  flex-direction: column;
-}
 .panel-help {
   margin: -8px 0 12px;
   color: #998d84;
   font-size: 0.78rem;
   line-height: 1.6;
-}
-.batch-panel textarea {
-  flex: 1;
-  min-height: 178px;
-  resize: vertical;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 12px;
-  padding: 13px;
-  color: #fffaf1;
-  background: rgba(9, 8, 7, 0.58);
-  font: inherit;
-  line-height: 1.65;
-}
-.batch-panel textarea:focus {
-  outline: 0;
-  border-color: rgba(251, 191, 36, 0.55);
-  box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.09);
-}
-.batch-panel textarea::placeholder {
-  color: #746a63;
-}
-.batch-panel .secondary-button {
-  margin-top: 12px;
 }
 .quick-add-panel {
   grid-column: 1/-1;
@@ -1272,25 +1152,6 @@ h1 {
 .quick-add-form .secondary-button {
   min-width: 190px;
   margin: 0;
-}
-.vote-box {
-  margin-top: 12px;
-  padding: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  border-radius: 14px;
-  background: rgba(0, 0, 0, 0.18);
-}
-.vote-caption {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin: 0 2px 8px;
-  color: #91857c;
-  font-size: 0.72rem;
-  font-weight: 800;
-}
-.vote-box.unanimous .vote-caption {
-  color: #fbbf24;
 }
 .vote-buttons {
   display: grid;
@@ -1337,14 +1198,6 @@ h1 {
 .vote-buttons strong {
   color: inherit;
   font-size: 0.78rem;
-}
-.detail-hold-button {
-  touch-action: none;
-}
-.detail-hold-button:active {
-  color: #211306 !important;
-  background: #fbbf24 !important;
-  transform: scale(0.94);
 }
 .dining-history-row {
   grid-template-columns: 130px 1fr auto;
@@ -1468,13 +1321,6 @@ h1 {
   color: inherit;
   background: rgba(255, 255, 255, 0.42);
 }
-.result-actions > .vote-box {
-  flex: 1 1 100%;
-  margin: 0;
-}
-.result-actions > .vote-box + a {
-  margin-top: 2px;
-}
 .restaurant-row > div:first-child {
   min-width: 0;
   flex: 1;
@@ -1578,12 +1424,6 @@ footer {
   .panel {
     padding: 18px;
     border-radius: 19px;
-  }
-  .meal-checks {
-    gap: 9px;
-  }
-  .eyebrow {
-    font-size: 0.64rem;
   }
 }
 
@@ -1735,11 +1575,6 @@ footer {
   min-height: 34px;
   padding: 6px 9px;
 }
-.ranking-panel .eat-button {
-  min-height: 34px;
-  margin-top: 6px;
-  padding: 6px 10px;
-}
 .ranking-panel .row-actions {
   position: absolute;
   top: 11px;
@@ -1770,5 +1605,146 @@ footer {
   }
   .ranking-heading h2 {
     font-size: 1.18rem;
+  }
+}
+
+/* Selection flow and compact leaderboard */
+.app-nav {
+  position: fixed;
+  top: max(12px, env(safe-area-inset-top));
+  right: max(14px, calc((100vw - 1100px) / 2));
+  width: auto;
+  margin: 0;
+}
+.offline-banner {
+  position: relative;
+  z-index: 2;
+  width: min(100%, 920px);
+  margin-top: 16px;
+  padding: 10px 14px;
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  border-radius: 12px;
+  color: #fde7b2;
+  background: rgba(120, 74, 8, 0.3);
+  text-align: center;
+  font-size: 0.78rem;
+}
+.vote-toast.error {
+  border-color: rgba(251, 113, 133, 0.45);
+  background: rgba(88, 20, 35, 0.88);
+}
+.draw-scope {
+  margin: 16px 0 0;
+  padding: 0;
+  border: 0;
+}
+.draw-scope legend {
+  margin: 0 0 8px 3px;
+  color: #a99c91;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+.draw-scope > div {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.draw-scope label {
+  display: grid;
+  place-items: center;
+  min-height: 40px;
+  padding: 7px 9px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 11px;
+  color: #a99c91;
+  background: rgba(5, 5, 5, 0.25);
+  text-align: center;
+  font-size: 0.75rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+.draw-scope label.selected {
+  border-color: rgba(251, 191, 36, 0.55);
+  color: #2b1704;
+  background: linear-gradient(105deg, #fed7aa, #fbbf24);
+}
+.draw-scope input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.rank-empty {
+  color: #887b72;
+  background: rgba(255, 255, 255, 0.05);
+}
+.restaurant-status-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 7px;
+}
+.ranking-panel .restaurant-status-row .last-eaten,
+.ranking-panel .restaurant-status-row .vote-buttons {
+  margin-top: 0;
+}
+.restaurant-status-row .last-eaten {
+  min-width: 0;
+  flex: 1;
+}
+.restaurant-status-row .vote-buttons {
+  flex: 0 0 auto;
+}
+.restaurant-status-row .vote-buttons button {
+  min-width: 76px;
+}
+.ranking-toggle {
+  display: block;
+  width: 100%;
+  margin-top: 12px;
+  border: 1px solid rgba(251, 191, 36, 0.2);
+  border-radius: 12px;
+  padding: 10px;
+  color: #f5d9aa;
+  background: rgba(251, 191, 36, 0.07);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 850;
+  cursor: pointer;
+}
+.history-add-button:disabled,
+.dining-history-row > button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.detail-modal:focus {
+  outline: none;
+}
+@media (max-width: 680px) {
+  .app-nav {
+    top: max(9px, env(safe-area-inset-top));
+    right: 10px;
+  }
+  .draw-scope > div {
+    gap: 6px;
+  }
+  .draw-scope label {
+    min-height: 42px;
+    padding-inline: 5px;
+    font-size: 0.68rem;
+  }
+  .ranking-panel .restaurant-main {
+    padding-right: 102px;
+  }
+  .restaurant-status-row {
+    gap: 5px;
+  }
+  .restaurant-status-row .last-eaten {
+    padding-inline: 6px;
+    font-size: 0.62rem;
+  }
+  .restaurant-status-row .vote-buttons button {
+    min-width: 70px;
+    font-size: 0.72rem;
   }
 }

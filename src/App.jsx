@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   CalendarDays,
   Check,
@@ -6,6 +6,7 @@ import {
   ExternalLink,
   Eye,
   History,
+  Info,
   MapPin,
   Menu,
   Pencil,
@@ -17,8 +18,14 @@ import {
   Utensils,
   X,
 } from "lucide-react";
+import {
+  DRAW_SCOPES,
+  rankRestaurants,
+  selectableRestaurants,
+} from "./selection.js";
 const USERS = ["威威", "小蘇蘇"],
   ALL = "不限",
+  CACHE_KEY = "whattoeat:last-state",
   CATEGORY_OPTIONS = [
     "台式",
     "日式",
@@ -144,14 +151,11 @@ function Ranking({
   busy,
   currentVoter,
   chooseVoter,
+  expanded,
+  setExpanded,
 }) {
-  const ranks = restaurants.map((restaurant, index) =>
-    index > 0 && restaurant.votes === restaurants[index - 1].votes
-      ? null
-      : index + 1,
-  );
-  for (let index = 1; index < ranks.length; index += 1)
-    if (ranks[index] === null) ranks[index] = ranks[index - 1];
+  const ranks = rankRestaurants(restaurants);
+  const visibleRestaurants = expanded ? restaurants : restaurants.slice(0, 5);
   return (
     <div className="panel ranking-panel">
       <div className="ranking-heading">
@@ -163,92 +167,125 @@ function Ranking({
         </div>
         <div className="ranking-summary">
           <span className="ranking-total">{restaurants.length} 間候選</span>
-          <small>長按卡片看詳細</small>
+          <small>長按或點資訊查看詳細</small>
         </div>
       </div>
       <div className="restaurant-list">
         {restaurants.length ? (
-          restaurants.map((x, index) => (
-            <div
-              className="restaurant-row"
-              key={x.id}
-              onPointerDown={(e) => {
-                const card = e.currentTarget;
-                card.dataset.held = "false";
-                card.dataset.startX = e.clientX;
-                card.dataset.startY = e.clientY;
-                card.dataset.timer = setTimeout(() => {
-                  card.dataset.held = "true";
-                  showDetail(x);
-                }, 500);
-              }}
-              onPointerMove={(e) => {
-                const card = e.currentTarget;
-                if (
-                  Math.abs(e.clientX - Number(card.dataset.startX)) > 10 ||
-                  Math.abs(e.clientY - Number(card.dataset.startY)) > 10
-                )
-                  clearTimeout(Number(card.dataset.timer));
-              }}
-              onPointerUp={(e) =>
-                clearTimeout(Number(e.currentTarget.dataset.timer))
-              }
-              onPointerCancel={(e) =>
-                clearTimeout(Number(e.currentTarget.dataset.timer))
-              }
-              onPointerLeave={(e) =>
-                clearTimeout(Number(e.currentTarget.dataset.timer))
-              }
-              onClickCapture={(e) => {
-                if (e.currentTarget.dataset.held === "true") {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  e.currentTarget.dataset.held = "false";
+          visibleRestaurants.map((x) => {
+            const index = restaurants.findIndex((item) => item.id === x.id);
+            return (
+              <div
+                className="restaurant-row"
+                key={x.id}
+                onPointerDown={(e) => {
+                  if (e.target.closest("button, a")) return;
+                  const card = e.currentTarget;
+                  card.dataset.held = "false";
+                  card.dataset.startX = e.clientX;
+                  card.dataset.startY = e.clientY;
+                  card.dataset.timer = setTimeout(() => {
+                    card.dataset.held = "true";
+                    showDetail(x);
+                  }, 500);
+                }}
+                onPointerMove={(e) => {
+                  const card = e.currentTarget;
+                  if (
+                    Math.abs(e.clientX - Number(card.dataset.startX)) > 10 ||
+                    Math.abs(e.clientY - Number(card.dataset.startY)) > 10
+                  )
+                    clearTimeout(Number(card.dataset.timer));
+                }}
+                onPointerUp={(e) =>
+                  clearTimeout(Number(e.currentTarget.dataset.timer))
                 }
-              }}
-              onContextMenu={(e) => e.preventDefault()}
-            >
-              <span className={`rank-number rank-${ranks[index]}`}>
-                {ranks[index]}
-              </span>
-              <div className="restaurant-main">
-                <strong>{x.name}</strong>
-                <small>{x.votes} 票</small>
+                onPointerCancel={(e) =>
+                  clearTimeout(Number(e.currentTarget.dataset.timer))
+                }
+                onPointerLeave={(e) =>
+                  clearTimeout(Number(e.currentTarget.dataset.timer))
+                }
+                onClickCapture={(e) => {
+                  if (e.currentTarget.dataset.held === "true") {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.currentTarget.dataset.held = "false";
+                  }
+                }}
+                onContextMenu={(e) => e.preventDefault()}
+              >
                 <span
-                  className={`last-eaten ${x.daysSinceEaten === 0 ? "today" : ""}`}
+                  className={`rank-number ${ranks[index] ? `rank-${ranks[index]}` : "rank-empty"}`}
+                  aria-label={
+                    ranks[index] ? `第 ${ranks[index]} 名` : "尚無排名"
+                  }
                 >
-                  <History size={13} /> {lastEatenText(x)}
+                  {ranks[index] || "·"}
                 </span>
-                <VoteButtons
-                  restaurant={x}
-                  {...{ vote, busy, currentVoter, chooseVoter }}
-                />
-              </div>
-              <div className="row-actions">
-                <button
-                  onClick={() => edit(x)}
-                  disabled={busy}
-                  aria-label={`編輯 ${x.name}`}
-                >
-                  <Settings size={17} />
-                </button>
-                {x.mapUrl && (
-                  <a
-                    href={x.mapUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    aria-label={`${x.name} Google Maps`}
+                <div className="restaurant-main">
+                  <strong>{x.name}</strong>
+                  <small>{x.votes} 票</small>
+                  <div className="restaurant-status-row">
+                    <span
+                      className={`last-eaten ${x.daysSinceEaten === 0 ? "today" : ""}`}
+                    >
+                      <History size={13} /> {lastEatenText(x)}
+                    </span>
+                    <VoteButtons
+                      restaurant={x}
+                      {...{ vote, busy, currentVoter, chooseVoter }}
+                    />
+                  </div>
+                </div>
+                <div className="row-actions">
+                  <button
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      showDetail(x);
+                    }}
+                    aria-label={`查看 ${x.name} 的詳細資訊`}
                   >
-                    <MapPin size={17} />
-                  </a>
-                )}
+                    <Info size={17} />
+                  </button>
+                  <button
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      edit(x);
+                    }}
+                    disabled={busy}
+                    aria-label={`編輯 ${x.name}`}
+                  >
+                    <Settings size={17} />
+                  </button>
+                  {x.mapUrl && (
+                    <a
+                      href={x.mapUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      aria-label={`${x.name} Google Maps`}
+                      onClick={(event) => event.stopPropagation()}
+                    >
+                      <MapPin size={17} />
+                    </a>
+                  )}
+                </div>
               </div>
-            </div>
-          ))
+            );
+          })
         ) : (
           <p className="muted">清單是空的，新增第一間餐廳吧。</p>
         )}
       </div>
+      {restaurants.length > 5 && (
+        <button
+          className="ranking-toggle"
+          onClick={() => setExpanded((value) => !value)}
+          aria-expanded={expanded}
+        >
+          {expanded ? "收起" : `查看全部 ${restaurants.length} 間`}
+        </button>
+      )}
     </div>
   );
 }
@@ -296,14 +333,18 @@ function TodayVotes({ restaurants }) {
     </div>
   );
 }
-function DiningHistory({ diningHistory, editMeal, addMeal }) {
+function DiningHistory({ diningHistory, editMeal, addMeal, busy }) {
   return (
     <div className="panel dining-history-panel">
       <div className="history-heading">
         <h2>
           <CalendarDays size={20} /> 用餐歷史
         </h2>
-        <button className="history-add-button" onClick={addMeal}>
+        <button
+          className="history-add-button"
+          onClick={addMeal}
+          disabled={busy}
+        >
           ＋ 新增紀錄
         </button>
       </div>
@@ -318,13 +359,15 @@ function DiningHistory({ diningHistory, editMeal, addMeal }) {
                 )}
               </time>
               <strong>{item.name}</strong>
-              <button onClick={() => editMeal(item)}>
+              <button onClick={() => editMeal(item)} disabled={busy}>
                 <Pencil size={15} /> 更正
               </button>
             </div>
           ))
         ) : (
-          <p className="muted">還沒有紀錄，選定餐廳後按「今天吃這間」。</p>
+          <p className="muted">
+            每天結算後會自動記錄最高票餐廳，也可以手動新增紀錄。
+          </p>
         )}
       </div>
     </div>
@@ -346,6 +389,9 @@ function AddMealEditor({ restaurants, save, close, busy }) {
     >
       <form
         className="edit-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-label="新增用餐紀錄"
         onSubmit={(e) => {
           e.preventDefault();
           save(date, restaurantId);
@@ -402,6 +448,9 @@ function MealEditor({ meal, restaurants, save, remove, close, busy }) {
     >
       <form
         className="edit-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-label="更正用餐紀錄"
         onSubmit={(e) => {
           e.preventDefault();
           save(meal, date, restaurantId);
@@ -456,14 +505,48 @@ function MealEditor({ meal, restaurants, save, remove, close, busy }) {
   );
 }
 function DetailModal({ restaurant, close }) {
+  const dialogRef = useRef(null);
+  useEffect(() => {
+    const previousFocus = document.activeElement;
+    dialogRef.current?.focus();
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") close();
+      if (event.key !== "Tab" || !dialogRef.current) return;
+      const focusable = dialogRef.current.querySelectorAll(
+        'button, a[href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+      );
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      previousFocus?.focus?.();
+    };
+  }, [close]);
   return (
     <div
       className="modal-backdrop"
       onMouseDown={(e) => e.target === e.currentTarget && close()}
     >
-      <div className="edit-modal detail-modal">
+      <div
+        ref={dialogRef}
+        className="edit-modal detail-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="restaurant-detail-title"
+        tabIndex="-1"
+      >
         <span className="ranking-kicker">RESTAURANT DETAILS</span>
-        <h2>{restaurant.name}</h2>
+        <h2 id="restaurant-detail-title">{restaurant.name}</h2>
         <dl>
           <div>
             <dt>料理</dt>
@@ -480,7 +563,7 @@ function DetailModal({ restaurant, close }) {
             <dd>
               {restaurant.price == null
                 ? "尚未設定"
-                : `NT$ ${restaurant.price} / 人`}
+                : `${restaurant.priceEstimated ? "預估 " : ""}NT$ ${restaurant.price} / 人`}
             </dd>
           </div>
           <div>
@@ -507,6 +590,7 @@ function EditRestaurant({ restaurant, save, remove, close, busy }) {
       : [restaurant.category],
   );
   const [price, setPrice] = useState(restaurant.price ?? "");
+  const [area, setArea] = useState(restaurant.area || "");
   const [closingTime, setClosingTime] = useState(restaurant.closingTime || "");
   const toggle = (category) =>
     setCategories((old) =>
@@ -521,9 +605,12 @@ function EditRestaurant({ restaurant, save, remove, close, busy }) {
     >
       <form
         className="edit-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-label="餐廳更多設定"
         onSubmit={(e) => {
           e.preventDefault();
-          save(restaurant, name, categories, price, closingTime);
+          save(restaurant, name, categories, area, price, closingTime);
         }}
       >
         <span className="ranking-kicker">MORE SETTINGS</span>
@@ -538,6 +625,18 @@ function EditRestaurant({ restaurant, save, remove, close, busy }) {
           maxLength="80"
           value={name}
           onChange={(event) => setName(event.target.value)}
+        />
+        <label className="edit-label" htmlFor="edit-restaurant-area">
+          地區
+        </label>
+        <input
+          className="modal-input"
+          id="edit-restaurant-area"
+          required
+          maxLength="30"
+          value={area}
+          onChange={(event) => setArea(event.target.value)}
+          placeholder="例如：中山區"
         />
         <label className="edit-label">料理分類（可複選）</label>
         <div className="category-picker">
@@ -554,7 +653,7 @@ function EditRestaurant({ restaurant, save, remove, close, busy }) {
           ))}
         </div>
         <label className="edit-label" htmlFor="edit-closing-time">
-          關門時間
+          關門時間（可留空）
         </label>
         <input
           className="modal-input"
@@ -564,7 +663,7 @@ function EditRestaurant({ restaurant, save, remove, close, busy }) {
           onChange={(event) => setClosingTime(event.target.value)}
         />
         <label className="edit-label" htmlFor="edit-price">
-          每人價錢
+          每人價錢{restaurant.priceEstimated ? "（目前為預估）" : ""}
         </label>
         <div className="price-input">
           <span>NT$</span>
@@ -593,7 +692,9 @@ function EditRestaurant({ restaurant, save, remove, close, busy }) {
           </button>
           <button
             className="secondary-button"
-            disabled={busy || !name.trim() || !categories.length}
+            disabled={
+              busy || !name.trim() || !area.trim() || !categories.length
+            }
           >
             儲存修改
           </button>
@@ -608,7 +709,12 @@ function IdentityPicker({ select, close }) {
       className="modal-backdrop"
       onMouseDown={(e) => e.target === e.currentTarget && close()}
     >
-      <div className="edit-modal identity-modal">
+      <div
+        className="edit-modal identity-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-label="選擇投票使用者"
+      >
         <span className="ranking-kicker">WHO ARE YOU</span>
         <h2>這次是誰投票？</h2>
         <p>只要選一次，這台裝置之後會自動記住。</p>
@@ -708,50 +814,95 @@ export default function App() {
     [pendingVote, setPendingVote] = useState(null),
     [page, setPage] = useState("home"),
     [menuOpen, setMenuOpen] = useState(false),
+    [rankingExpanded, setRankingExpanded] = useState(false),
+    [drawScope, setDrawScope] = useState("all"),
+    [offline, setOffline] = useState(false),
     [detail, setDetail] = useState(null),
-    [toast, setToast] = useState(""),
+    [toast, setToast] = useState(null),
     [error, setError] = useState(""),
     [message, setMessage] = useState("把選擇困難交給宇宙。");
-  const load = async () => {
+  const showToast = useCallback((message, type = "success") => {
+    clearTimeout(toastTimer.current);
+    setToast({ message, type });
+    toastTimer.current = setTimeout(() => setToast(null), 2600);
+  }, []);
+  const applyState = useCallback((data) => {
+    setRestaurants(data.restaurants || []);
+    setDiningHistory(data.diningHistory || []);
+    setLastVisit(data.lastVisit || null);
+  }, []);
+  const load = useCallback(async () => {
     try {
       const d = await api();
-      setRestaurants(d.restaurants);
-      setDiningHistory(d.diningHistory || []);
-      setLastVisit(d.lastVisit || null);
+      applyState(d);
+      try {
+        localStorage.setItem(CACHE_KEY, JSON.stringify(d));
+      } catch {
+        // Storage can be unavailable in private browsing.
+      }
+      setOffline(false);
       setError("");
-      return d;
+      return true;
     } catch (e) {
+      try {
+        const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || "null");
+        if (cached?.restaurants) {
+          applyState(cached);
+          setOffline(true);
+          setError("");
+          return false;
+        }
+      } catch {
+        // Fall through to the network error.
+      }
+      setOffline(true);
       setError(e.message);
+      return false;
     }
-  };
+  }, [applyState]);
   // Initial fetch synchronizes this client with the shared Redis state.
   // oxlint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     void (async () => {
-      await load();
+      const online = await load();
       try {
         const voter = localStorage.getItem("whattoeat:voter");
         if (USERS.includes(voter)) {
           setCurrentVoter(voter);
-          await api({
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ action: "visit", voter }),
-          });
+          if (online)
+            await api({
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ action: "visit", voter }),
+            });
         }
       } catch {
         // Browsers may disable local storage; voting still works normally.
       }
     })();
     const clock = setInterval(() => setNow(Date.now()), 60000);
-    return () => clearInterval(clock);
-  }, []);
+    const refresh = () => void load();
+    const sharedStateTimer = setInterval(refresh, 30000);
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") refresh();
+    };
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => {
+      clearInterval(clock);
+      clearInterval(sharedStateTimer);
+      clearTimeout(toastTimer.current);
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
+  }, [load]);
   const modalOpen = Boolean(
     editing || editingMeal || addingMeal || identityPickerOpen || detail,
   );
   useEffect(() => {
     if (!modalOpen) return;
     const scrollY = window.scrollY;
+    const previousFocus = document.activeElement;
     const previous = {
       position: document.body.style.position,
       top: document.body.style.top,
@@ -762,12 +913,31 @@ export default function App() {
     document.body.style.top = `-${scrollY}px`;
     document.body.style.width = "100%";
     document.body.style.overflow = "hidden";
+    queueMicrotask(() => {
+      document
+        .querySelector(
+          '.edit-modal input, .edit-modal select, .edit-modal button, .edit-modal[tabindex="-1"]',
+        )
+        ?.focus();
+    });
+    const closeModal = (event) => {
+      if (event.key !== "Escape") return;
+      setEditing(null);
+      setEditingMeal(null);
+      setAddingMeal(false);
+      setIdentityPickerOpen(false);
+      setPendingVote(null);
+      setDetail(null);
+    };
+    document.addEventListener("keydown", closeModal);
     return () => {
+      document.removeEventListener("keydown", closeModal);
       document.body.style.position = previous.position;
       document.body.style.top = previous.top;
       document.body.style.width = previous.width;
       document.body.style.overflow = previous.overflow;
       window.scrollTo(0, scrollY);
+      previousFocus?.focus?.();
     };
   }, [modalOpen]);
   const options = useMemo(
@@ -780,16 +950,8 @@ export default function App() {
     [restaurants],
   );
   const matches = useMemo(
-    () =>
-      restaurants.filter(
-        (x) =>
-          (filters.category === ALL ||
-            (x.categories || [x.category]).includes(filters.category)) &&
-          (filters.area === ALL || x.area === filters.area) &&
-          (filters.budget === ALL ||
-            (x.price != null && x.price <= Number(filters.budget))),
-      ),
-    [restaurants, filters],
+    () => selectableRestaurants(restaurants, filters, drawScope, ALL),
+    [restaurants, filters, drawScope],
   );
   const update = (key, value) =>
     setFilters((old) => ({ ...old, [key]: value }));
@@ -799,7 +961,7 @@ export default function App() {
       setResult(null);
       setMessage(
         restaurants.length
-          ? "這條件太挑了，放寬一點吧！"
+          ? "目前沒有符合篩選與抽選範圍的餐廳，請調整條件。"
           : "先在下方新增餐廳，就可以開始抽籤。",
       );
       return;
@@ -817,7 +979,11 @@ export default function App() {
       }
     }, 100);
   };
-  const mutate = async (payload) => {
+  const mutate = async (payload, errorToastPrefix = "") => {
+    if (offline) {
+      showToast("目前為離線資料，連線恢復後才能儲存", "error");
+      return false;
+    }
     setBusy(true);
     setError("");
     try {
@@ -830,6 +996,8 @@ export default function App() {
       return response;
     } catch (e) {
       setError(e.message);
+      if (errorToastPrefix)
+        showToast(`${errorToastPrefix}：${e.message}`, "error");
       return false;
     } finally {
       setBusy(false);
@@ -837,9 +1005,12 @@ export default function App() {
   };
   const addFromMap = async (e) => {
     e.preventDefault();
-    if (await mutate({ action: "addFromMapUrl", mapUrl: mapLink })) {
+    if (
+      await mutate({ action: "addFromMapUrl", mapUrl: mapLink }, "新增餐廳失敗")
+    ) {
       setMapLink("");
       setMessage("已從 Google Maps 連結新增餐廳。");
+      showToast("餐廳新增成功");
     }
   };
   const remove = async (x) => {
@@ -850,15 +1021,17 @@ export default function App() {
     }
   };
   const vote = async (restaurant, voter) => {
+    if (offline) {
+      showToast("目前為離線資料，暫時無法投票", "error");
+      return;
+    }
     const wasSelected = restaurant.voters?.includes(voter);
     const before = restaurants;
     if (!wasSelected) {
-      setToast("還真會犒賞自己");
-      clearTimeout(toastTimer.current);
-      toastTimer.current = setTimeout(() => setToast(""), 1800);
+      showToast("還真會犒賞自己");
     } else {
       clearTimeout(toastTimer.current);
-      setToast("");
+      setToast(null);
     }
     try {
       localStorage.setItem("whattoeat:voter", voter);
@@ -906,13 +1079,21 @@ export default function App() {
     setPendingVote(restaurant);
     setIdentityPickerOpen(true);
   };
-  const saveEdit = async (restaurant, name, categories, price, closingTime) => {
+  const saveEdit = async (
+    restaurant,
+    name,
+    categories,
+    area,
+    price,
+    closingTime,
+  ) => {
     if (
       await mutate({
         action: "update",
         id: restaurant.id,
         name,
         categories,
+        area,
         price: price === "" ? null : Number(price),
         closingTime,
       })
@@ -1009,21 +1190,22 @@ export default function App() {
           {error}
         </div>
       )}
+      {offline && (
+        <div className="offline-banner" role="status">
+          目前為離線資料，尚未同步；連線恢復前無法修改。
+        </div>
+      )}
       {page === "home" && <LastVisit visit={lastVisit} now={now} />}
-      {toast && <div className="vote-toast">{toast}</div>}
+      {toast && (
+        <div
+          className={`vote-toast ${toast.type === "error" ? "error" : ""}`}
+          role="status"
+        >
+          {toast.message}
+        </div>
+      )}
       {page === "home" ? (
         <>
-          <section className="ranking-spotlight">
-            <Ranking
-              restaurants={restaurants}
-              vote={vote}
-              edit={setEditing}
-              showDetail={setDetail}
-              busy={busy}
-              currentVoter={currentVoter}
-              chooseVoter={requestIdentity}
-            />
-          </section>
           <section className="glass-card">
             <div className="filters">
               <Filter
@@ -1045,27 +1227,45 @@ export default function App() {
                 onChange={(v) => update("area", v)}
               />
             </div>
+            <fieldset className="draw-scope">
+              <legend>抽選範圍</legend>
+              <div>
+                {Object.entries(DRAW_SCOPES).map(([value, label]) => (
+                  <label
+                    key={value}
+                    className={drawScope === value ? "selected" : ""}
+                  >
+                    <input
+                      type="radio"
+                      name="draw-scope"
+                      value={value}
+                      checked={drawScope === value}
+                      onChange={(event) => setDrawScope(event.target.value)}
+                    />
+                    {label}
+                  </label>
+                ))}
+              </div>
+            </fieldset>
             <div className="match-count">
-              目前有 <strong>{matches.length}</strong> 個命運候選
+              目前實際可抽 <strong>{matches.length}</strong> 間
             </div>
             <div className="result-stage" aria-live="polite">
               <Result
-                {...{
-                  result,
-                  rolling,
-                  restaurants,
-                  vote,
-                  busy,
-                  currentVoter,
-                  chooseVoter: requestIdentity,
-                }}
+                result={result}
+                rolling={rolling}
+                restaurants={restaurants}
+                vote={vote}
+                busy={busy || offline}
+                currentVoter={currentVoter}
+                chooseVoter={requestIdentity}
               />
             </div>
             <p className="message">{message}</p>
             <button
               className="decide-button"
               onClick={decide}
-              disabled={rolling || busy}
+              disabled={rolling || busy || !matches.length}
             >
               {result && !rolling ? (
                 <RotateCcw size={21} />
@@ -1075,8 +1275,24 @@ export default function App() {
               {rolling ? "正在召喚命運…" : result ? "再抽一次" : "幫我決定"}
             </button>
           </section>
+          <section className="ranking-spotlight">
+            <Ranking
+              restaurants={restaurants}
+              vote={vote}
+              edit={setEditing}
+              showDetail={setDetail}
+              busy={busy || offline}
+              currentVoter={currentVoter}
+              chooseVoter={requestIdentity}
+              expanded={rankingExpanded}
+              setExpanded={setRankingExpanded}
+            />
+          </section>
           <section className="community-grid">
-            <QuickAdd {...{ mapLink, setMapLink, addFromMap, busy }} />
+            <QuickAdd
+              {...{ mapLink, setMapLink, addFromMap }}
+              busy={busy || offline}
+            />
             <TodayVotes restaurants={restaurants} />
           </section>
         </>
@@ -1086,6 +1302,7 @@ export default function App() {
             diningHistory={diningHistory}
             editMeal={setEditingMeal}
             addMeal={() => setAddingMeal(true)}
+            busy={busy || offline}
           />
         </section>
       )}
@@ -1096,7 +1313,7 @@ export default function App() {
           save={saveEdit}
           remove={remove}
           close={() => setEditing(null)}
-          busy={busy}
+          busy={busy || offline}
         />
       )}
       {editingMeal && (
@@ -1107,7 +1324,7 @@ export default function App() {
           save={saveMeal}
           remove={removeMeal}
           close={() => setEditingMeal(null)}
-          busy={busy}
+          busy={busy || offline}
         />
       )}
       {addingMeal && (
@@ -1115,7 +1332,7 @@ export default function App() {
           restaurants={restaurants}
           save={addMeal}
           close={() => setAddingMeal(false)}
-          busy={busy}
+          busy={busy || offline}
         />
       )}
       {identityPickerOpen && (

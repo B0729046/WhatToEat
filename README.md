@@ -17,7 +17,7 @@
 - `UPSTASH_REDIS_REST_URL`
 - `UPSTASH_REDIS_REST_TOKEN`
 
-也相容 Vercel KV 的 `KV_REST_API_URL` 與 `KV_REST_API_TOKEN`。部署後所有訪客會共用餐廳、票數及最近 50 筆投票紀錄。
+也相容 Vercel KV 的 `KV_REST_API_URL` 與 `KV_REST_API_TOKEN`。部署後所有訪客會共用餐廳、當日票數及用餐歷史；投票操作紀錄不會由公開狀態 API 回傳。
 
 ## 指令
 
