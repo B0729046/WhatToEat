@@ -794,9 +794,11 @@ function Result({
 }
 export default function App() {
   const toastTimer = useRef(null);
+  const lastVisitTimer = useRef(null);
   const [restaurants, setRestaurants] = useState([]),
     [diningHistory, setDiningHistory] = useState([]),
     [lastVisit, setLastVisit] = useState(null),
+    [showLastVisit, setShowLastVisit] = useState(false),
     [now, setNow] = useState(Date.now()),
     [filters, setFilters] = useState({
       category: ALL,
@@ -865,6 +867,9 @@ export default function App() {
   useEffect(() => {
     void (async () => {
       const online = await load();
+      setShowLastVisit(true);
+      clearTimeout(lastVisitTimer.current);
+      lastVisitTimer.current = setTimeout(() => setShowLastVisit(false), 2000);
       try {
         const voter = localStorage.getItem("whattoeat:voter");
         if (USERS.includes(voter)) {
@@ -892,6 +897,7 @@ export default function App() {
       clearInterval(clock);
       clearInterval(sharedStateTimer);
       clearTimeout(toastTimer.current);
+      clearTimeout(lastVisitTimer.current);
       window.removeEventListener("focus", refresh);
       document.removeEventListener("visibilitychange", handleVisibility);
     };
@@ -1184,6 +1190,7 @@ export default function App() {
             <>
               今天吃什麼？
               <span className="hero-italian">Cosa mangiamo oggi?</span>
+              <small className="hero-pronunciation">摳薩・曼賈莫・歐吉</small>
             </>
           )}
         </h1>
@@ -1193,8 +1200,10 @@ export default function App() {
             <strong>
               {italianLesson.chinese}（{italianLesson.italian}）
             </strong>
+            <small>發音：{italianLesson.pronunciation}</small>
             <small>
-              {italianLesson.example} — {italianLesson.meaning}
+              {italianLesson.example}（{italianLesson.examplePronunciation}）—{" "}
+              {italianLesson.meaning}
             </small>
           </div>
         )}
@@ -1209,7 +1218,9 @@ export default function App() {
           目前為離線資料，尚未同步；連線恢復前無法修改。
         </div>
       )}
-      {page === "home" && <LastVisit visit={lastVisit} now={now} />}
+      {page === "home" && showLastVisit && lastVisit && (
+        <LastVisit visit={lastVisit} now={now} />
+      )}
       {toast && (
         <div
           className={`vote-toast ${toast.type === "error" ? "error" : ""}`}

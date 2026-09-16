@@ -1451,6 +1451,9 @@ footer {
 .menu-button {
   border-radius: 12px;
   padding: 9px 13px;
+  background: rgba(25, 19, 15, 0.58);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 .app-menu {
   position: absolute;
@@ -1462,8 +1465,10 @@ footer {
   padding: 7px;
   border: 1px solid rgba(253, 230, 138, 0.16);
   border-radius: 15px;
-  background: rgba(17, 13, 11, 0.98);
+  background: rgba(17, 13, 11, 0.68);
   box-shadow: 0 18px 48px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
 }
 .app-menu button {
   width: 100%;
@@ -1475,7 +1480,11 @@ footer {
 .app-menu button.active,
 .app-menu button:hover {
   color: #241408;
-  background: linear-gradient(105deg, #fed7aa, #fbbf24);
+  background: linear-gradient(
+    105deg,
+    rgba(254, 215, 170, 0.78),
+    rgba(251, 191, 36, 0.78)
+  );
 }
 .history-hero h1 {
   font-size: clamp(2.2rem, 7vw, 3.7rem);
@@ -1758,6 +1767,15 @@ footer {
   font-size: clamp(0.95rem, 2.4vw, 1.25rem);
   font-weight: 750;
   letter-spacing: 0.02em;
+}
+.hero-pronunciation {
+  display: block;
+  margin-top: 5px;
+  color: #a99786;
+  -webkit-text-fill-color: #a99786;
+  font-size: 0.7rem;
+  font-weight: 650;
+  letter-spacing: 0.08em;
 }
 .italian-lesson {
   display: grid;

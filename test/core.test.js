@@ -84,6 +84,8 @@ test("每日義大利文在同一個台北日期會保持一致", () => {
   const evening = getDailyItalianLesson(new Date("2026-09-16T23:00:00+08:00"));
   assert.deepEqual(morning, evening);
   assert.ok(morning.italian);
+  assert.ok(morning.pronunciation);
+  assert.ok(morning.examplePronunciation);
   assert.ok(morning.meaning);
 });
 
