@@ -4,7 +4,11 @@ import {
   findDuplicateRestaurant,
   mealDateConflict,
 } from "../api/state-logic.js";
-import { rankRestaurants, selectableRestaurants } from "../src/selection.js";
+import {
+  getDailyItalianLesson,
+  rankRestaurants,
+  selectableRestaurants,
+} from "../src/selection.js";
 
 const restaurants = [
   {
@@ -54,7 +58,7 @@ test("排名支援並列，零票不顯示名次", () => {
 });
 
 test("抽選範圍會與既有篩選共同套用", () => {
-  const filters = { budget: "250", category: "台式", area: "不限" };
+  const filters = { category: "台式", area: "不限" };
   assert.deepEqual(
     selectableRestaurants(restaurants, filters, "all", "不限").map(
       (item) => item.id,
@@ -73,6 +77,14 @@ test("抽選範圍會與既有篩選共同套用", () => {
     ),
     ["b"],
   );
+});
+
+test("每日義大利文在同一個台北日期會保持一致", () => {
+  const morning = getDailyItalianLesson(new Date("2026-09-16T01:00:00+08:00"));
+  const evening = getDailyItalianLesson(new Date("2026-09-16T23:00:00+08:00"));
+  assert.deepEqual(morning, evening);
+  assert.ok(morning.italian);
+  assert.ok(morning.meaning);
 });
 
 test("可偵測標準化 Maps URL 與名稱地區重複", () => {

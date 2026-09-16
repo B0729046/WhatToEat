@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import {
   DRAW_SCOPES,
+  getDailyItalianLesson,
   rankRestaurants,
   selectableRestaurants,
 } from "./selection.js";
@@ -798,7 +799,6 @@ export default function App() {
     [lastVisit, setLastVisit] = useState(null),
     [now, setNow] = useState(Date.now()),
     [filters, setFilters] = useState({
-      budget: ALL,
       category: ALL,
       area: ALL,
     }),
@@ -952,6 +952,10 @@ export default function App() {
   const matches = useMemo(
     () => selectableRestaurants(restaurants, filters, drawScope, ALL),
     [restaurants, filters, drawScope],
+  );
+  const italianLesson = useMemo(
+    () => getDailyItalianLesson(new Date(now)),
+    [now],
   );
   const update = (key, value) =>
     setFilters((old) => ({ ...old, [key]: value }));
@@ -1178,12 +1182,22 @@ export default function App() {
             "用餐歷史"
           ) : (
             <>
-              今天
-              <br className="mobile-break" />
-              吃什麼？
+              今天吃什麼？
+              <span className="hero-italian">Cosa mangiamo oggi?</span>
             </>
           )}
         </h1>
+        {page === "home" && (
+          <div className="italian-lesson" aria-label="每日一句義大利文">
+            <span>每日一句義大利文</span>
+            <strong>
+              {italianLesson.chinese}（{italianLesson.italian}）
+            </strong>
+            <small>
+              {italianLesson.example} — {italianLesson.meaning}
+            </small>
+          </div>
+        )}
       </section>
       {error && (
         <div className="error-banner" role="alert">
@@ -1206,14 +1220,21 @@ export default function App() {
       )}
       {page === "home" ? (
         <>
+          <section className="ranking-spotlight">
+            <Ranking
+              restaurants={restaurants}
+              vote={vote}
+              edit={setEditing}
+              showDetail={setDetail}
+              busy={busy || offline}
+              currentVoter={currentVoter}
+              chooseVoter={requestIdentity}
+              expanded={rankingExpanded}
+              setExpanded={setRankingExpanded}
+            />
+          </section>
           <section className="glass-card">
             <div className="filters">
-              <Filter
-                label="預算"
-                value={filters.budget}
-                options={["150", "250", "350", "500"]}
-                onChange={(v) => update("budget", v)}
-              />
               <Filter
                 label="料理"
                 value={filters.category}
@@ -1274,19 +1295,6 @@ export default function App() {
               )}{" "}
               {rolling ? "正在召喚命運…" : result ? "再抽一次" : "幫我決定"}
             </button>
-          </section>
-          <section className="ranking-spotlight">
-            <Ranking
-              restaurants={restaurants}
-              vote={vote}
-              edit={setEditing}
-              showDetail={setDetail}
-              busy={busy || offline}
-              currentVoter={currentVoter}
-              chooseVoter={requestIdentity}
-              expanded={rankingExpanded}
-              setExpanded={setRankingExpanded}
-            />
           </section>
           <section className="community-grid">
             <QuickAdd

@@ -7,7 +7,7 @@
   text-rendering: optimizeLegibility;
 }
 .filters {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 .today-votes {
   display: grid;
@@ -68,7 +68,7 @@
 }
 @media (max-width: 680px) {
   .filters {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .today-votes {
     grid-template-columns: 1fr;
@@ -647,7 +647,7 @@ h1 {
 }
 .filters {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 12px;
 }
 .filter-group > span {
@@ -811,7 +811,7 @@ footer {
     border-radius: 23px;
   }
   .filters {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .result-stage {
     min-height: 210px;
@@ -1746,5 +1746,56 @@ footer {
   .restaurant-status-row .vote-buttons button {
     min-width: 70px;
     font-size: 0.72rem;
+  }
+}
+
+/* Daily beginner Italian */
+.hero-italian {
+  display: block;
+  margin-top: 10px;
+  color: #e8cda9;
+  -webkit-text-fill-color: #e8cda9;
+  font-size: clamp(0.95rem, 2.4vw, 1.25rem);
+  font-weight: 750;
+  letter-spacing: 0.02em;
+}
+.italian-lesson {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  margin: 10px auto 0;
+  padding: 11px 18px;
+  width: fit-content;
+  max-width: 100%;
+  border: 1px solid rgba(251, 191, 36, 0.18);
+  border-radius: 15px;
+  background: rgba(24, 18, 14, 0.62);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.16);
+}
+.italian-lesson > span {
+  color: #b69878;
+  font-size: 0.62rem;
+  font-weight: 850;
+  letter-spacing: 0.12em;
+}
+.italian-lesson strong {
+  color: #fff5e7;
+  font-size: 0.92rem;
+}
+.italian-lesson small {
+  color: #b9aea5;
+  font-size: 0.72rem;
+}
+@media (max-width: 680px) {
+  .hero h1 {
+    font-size: clamp(2.35rem, 11vw, 3rem);
+  }
+  .hero-italian {
+    margin-top: 7px;
+    font-size: 0.94rem;
+  }
+  .italian-lesson {
+    margin-top: 8px;
+    padding: 9px 13px;
   }
 }
