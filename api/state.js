@@ -12,7 +12,7 @@ const KEYS = {
   lastVisit: "whattoeat:lastVisit",
 };
 const USERS = ["威威", "小蘇蘇"];
-const REMOVED_CATEGORIES = new Set(["早餐", "素食"]);
+const REMOVED_CATEGORIES = new Set(["早餐", "素食", "燒肉", "咖啡廳", "甜點"]);
 function taipeiDay() {
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone: "Asia/Taipei",

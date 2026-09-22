@@ -27,18 +27,7 @@ import {
 const USERS = ["威威", "小蘇蘇"],
   ALL = "不限",
   CACHE_KEY = "whattoeat:last-state",
-  CATEGORY_OPTIONS = [
-    "台式",
-    "日式",
-    "韓式",
-    "義式",
-    "東南亞",
-    "鍋物",
-    "燒肉",
-    "咖啡廳",
-    "甜點",
-    "其他",
-  ];
+  CATEGORY_OPTIONS = ["台式", "日式", "韓式", "義式", "東南亞", "鍋物", "其他"];
 function Filter({ label, value, options, onChange }) {
   return (
     <label className="filter-group">
@@ -586,9 +575,14 @@ function DetailModal({ restaurant, close }) {
 function EditRestaurant({ restaurant, save, remove, close, busy }) {
   const [name, setName] = useState(restaurant.name);
   const [categories, setCategories] = useState(
-    restaurant.categories?.length
-      ? restaurant.categories
-      : [restaurant.category],
+    (() => {
+      const available = (
+        restaurant.categories?.length
+          ? restaurant.categories
+          : [restaurant.category]
+      ).filter((category) => CATEGORY_OPTIONS.includes(category));
+      return available.length ? available : ["其他"];
+    })(),
   );
   const [price, setPrice] = useState(restaurant.price ?? "");
   const [area, setArea] = useState(restaurant.area || "");
@@ -615,7 +609,6 @@ function EditRestaurant({ restaurant, save, remove, close, busy }) {
         }}
       >
         <span className="ranking-kicker">MORE SETTINGS</span>
-        <h2>{restaurant.name}・更多設定</h2>
         <label className="edit-label" htmlFor="edit-restaurant-name">
           餐廳名稱
         </label>
