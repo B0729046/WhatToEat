@@ -1,5 +1,8 @@
 import assert from "node:assert/strict";
+import { createHmac } from "node:crypto";
 import test from "node:test";
+import { generateAiReply } from "../api/_ai.js";
+import lineWebhookHandler from "../api/line-webhook.js";
 import {
   findDuplicateRestaurant,
   mealDateConflict,
@@ -117,4 +120,67 @@ test("用餐紀錄換到已有資料的日期視為衝突", () => {
   const records = { "2026-09-14": {}, "2026-09-15": {} };
   assert.equal(mealDateConflict(records, "2026-09-14", "2026-09-15"), true);
   assert.equal(mealDateConflict(records, "2026-09-14", "2026-09-14"), false);
+});
+
+test("Gemini 回應請求與文字解析正常", async () => {
+  const originalFetch = globalThis.fetch;
+  const originalKey = process.env.GEMINI_API_KEY;
+  process.env.GEMINI_API_KEY = "test-key";
+  globalThis.fetch = async (url, options) => {
+    assert.match(String(url), /:generateContent$/);
+    const body = JSON.parse(options.body);
+    assert.equal(body.contents[0].parts[0].text, "今天吃什麼？");
+    return new Response(
+      JSON.stringify({
+        candidates: [{ content: { parts: [{ text: "小葉葉測試回覆" }] } }],
+      }),
+      { status: 200, headers: { "content-type": "application/json" } },
+    );
+  };
+  try {
+    assert.equal(
+      await generateAiReply("今天吃什麼？", "小蘇蘇"),
+      "小葉葉測試回覆",
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalKey === undefined) delete process.env.GEMINI_API_KEY;
+    else process.env.GEMINI_API_KEY = originalKey;
+  }
+});
+
+test("LINE Webhook 可驗證簽章並接受空事件", async () => {
+  const originalSecret = process.env.LINE_CHANNEL_SECRET;
+  process.env.LINE_CHANNEL_SECRET = "test-line-secret";
+  const rawBody = JSON.stringify({ events: [] });
+  const signature = createHmac("sha256", process.env.LINE_CHANNEL_SECRET)
+    .update(rawBody)
+    .digest("base64");
+  let statusCode = 0;
+  let responseBody;
+  const response = {
+    status(code) {
+      statusCode = code;
+      return this;
+    },
+    json(body) {
+      responseBody = body;
+      return body;
+    },
+  };
+  try {
+    await lineWebhookHandler(
+      {
+        method: "POST",
+        body: rawBody,
+        headers: { "x-line-signature": signature },
+      },
+      response,
+    );
+    assert.equal(statusCode, 200);
+    assert.deepEqual(responseBody, { ok: true });
+  } finally {
+    if (originalSecret === undefined) delete process.env.LINE_CHANNEL_SECRET;
+    else process.env.LINE_CHANNEL_SECRET = originalSecret;
+  }
 });

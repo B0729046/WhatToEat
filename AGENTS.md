@@ -10,7 +10,7 @@
 
 ## 技術架構
 
-- 專案位置：`C:\Projects\WhatToEat`。
+- 專案位置：`D:\賴威宇\Projects\WebTools`。
 - 前端使用 React、Vite 與 JavaScript。
 - 後端使用 Vercel Functions。
 - 共享資料使用 Upstash Redis。
