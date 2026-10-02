@@ -27,7 +27,20 @@ import {
 const USERS = ["威威", "小蘇蘇"],
   ALL = "不限",
   CACHE_KEY = "whattoeat:last-state",
+  PAGE_KEY = "whattoeat:page",
+  PAGES = ["home", "zhonghe", "history", "add"],
   CATEGORY_OPTIONS = ["台式", "日式", "韓式", "義式", "東南亞", "鍋物", "其他"];
+function initialPage() {
+  const hashPage = globalThis.location?.hash?.slice(1);
+  if (PAGES.includes(hashPage)) return hashPage;
+  try {
+    const storedPage = localStorage.getItem(PAGE_KEY);
+    if (PAGES.includes(storedPage)) return storedPage;
+  } catch {
+    // Page persistence is optional when storage is unavailable.
+  }
+  return "home";
+}
 function Filter({ label, value, options, onChange }) {
   return (
     <label className="filter-group">
@@ -143,6 +156,8 @@ function Ranking({
   chooseVoter,
   expanded,
   setExpanded,
+  title = "今天想吃排行榜",
+  kicker = "TODAY'S LEADERBOARD",
 }) {
   const ranks = rankRestaurants(restaurants);
   const visibleRestaurants = expanded ? restaurants : restaurants.slice(0, 5);
@@ -150,9 +165,9 @@ function Ranking({
     <div className="panel ranking-panel">
       <div className="ranking-heading">
         <div>
-          <span className="ranking-kicker">TODAY'S LEADERBOARD</span>
+          <span className="ranking-kicker">{kicker}</span>
           <h2>
-            <Trophy size={24} /> 今天想吃排行榜
+            <Trophy size={24} /> {title}
           </h2>
         </div>
         <div className="ranking-summary">
@@ -319,65 +334,6 @@ function TodayVotes({ restaurants }) {
             </section>
           );
         })}
-      </div>
-    </div>
-  );
-}
-function ZhongheFood({ restaurants, edit, showDetail, busy }) {
-  return (
-    <div className="panel zhonghe-panel">
-      <div className="zhonghe-heading">
-        <div>
-          <span className="ranking-kicker">ZHONGHE FAVORITES</span>
-          <h2>
-            <MapPin size={22} /> 中窩美食
-          </h2>
-        </div>
-        <span>{restaurants.length} 間</span>
-      </div>
-      <p className="panel-help">
-        地區包含中和的餐廳會自動收進這裡，也會繼續保留在原本排行榜。
-      </p>
-      <div className="zhonghe-list">
-        {restaurants.length ? (
-          restaurants.map((restaurant) => (
-            <article className="zhonghe-row" key={restaurant.id}>
-              <div>
-                <strong>{restaurant.name}</strong>
-                <small>{restaurant.area || "中和區"}</small>
-              </div>
-              <div className="zhonghe-actions">
-                <button
-                  type="button"
-                  onClick={() => showDetail(restaurant)}
-                  aria-label={`查看 ${restaurant.name} 的詳細資訊`}
-                >
-                  <Info size={17} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => edit(restaurant)}
-                  disabled={busy}
-                  aria-label={`編輯 ${restaurant.name}`}
-                >
-                  <Settings size={17} />
-                </button>
-                {restaurant.mapUrl && (
-                  <a
-                    href={restaurant.mapUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    aria-label={`${restaurant.name} Google Maps`}
-                  >
-                    <MapPin size={17} />
-                  </a>
-                )}
-              </div>
-            </article>
-          ))
-        ) : (
-          <p className="muted">目前還沒有地區標示為中和的餐廳。</p>
-        )}
       </div>
     </div>
   );
@@ -864,9 +820,10 @@ export default function App() {
     [currentVoter, setCurrentVoter] = useState(null),
     [identityPickerOpen, setIdentityPickerOpen] = useState(false),
     [pendingVote, setPendingVote] = useState(null),
-    [page, setPage] = useState("home"),
+    [page, setPage] = useState(initialPage),
     [menuOpen, setMenuOpen] = useState(false),
     [rankingExpanded, setRankingExpanded] = useState(false),
+    [zhongheRankingExpanded, setZhongheRankingExpanded] = useState(false),
     [drawScope, setDrawScope] = useState("all"),
     [offline, setOffline] = useState(false),
     [detail, setDetail] = useState(null),
@@ -963,6 +920,24 @@ export default function App() {
       document.body.style.overflow = previousOverflow;
     };
   }, [menuOpen]);
+  useEffect(() => {
+    try {
+      localStorage.setItem(PAGE_KEY, page);
+    } catch {
+      // The hash still preserves the current page without local storage.
+    }
+    const nextHash = `#${page}`;
+    if (globalThis.location?.hash !== nextHash)
+      globalThis.history?.replaceState(null, "", nextHash);
+  }, [page]);
+  useEffect(() => {
+    const followHash = () => {
+      const nextPage = globalThis.location?.hash?.slice(1);
+      if (PAGES.includes(nextPage)) setPage(nextPage);
+    };
+    window.addEventListener("hashchange", followHash);
+    return () => window.removeEventListener("hashchange", followHash);
+  }, []);
   useEffect(() => {
     if (!modalOpen) return;
     const scrollY = window.scrollY;
@@ -1261,6 +1236,15 @@ export default function App() {
                 <CalendarDays size={18} /> 用餐歷史
               </button>
               <button
+                className={page === "add" ? "active" : ""}
+                onClick={() => {
+                  setPage("add");
+                  setMenuOpen(false);
+                }}
+              >
+                <MapPin size={18} /> 新增餐廳
+              </button>
+              <button
                 onClick={() => {
                   setMenuOpen(false);
                   requestIdentity();
@@ -1277,6 +1261,8 @@ export default function App() {
           {page !== "home" ? (
             page === "history" ? (
               "用餐歷史"
+            ) : page === "add" ? (
+              "新增餐廳"
             ) : (
               "中窩美食"
             )
@@ -1401,11 +1387,7 @@ export default function App() {
               {rolling ? "正在召喚命運…" : result ? "再抽一次" : "幫我決定"}
             </button>
           </section>
-          <section className="community-grid">
-            <QuickAdd
-              {...{ mapLink, setMapLink, addFromMap }}
-              busy={busy || offline}
-            />
+          <section className="community-grid today-votes-only">
             <TodayVotes restaurants={restaurants} />
           </section>
         </>
@@ -1418,12 +1400,26 @@ export default function App() {
             busy={busy || offline}
           />
         </section>
-      ) : (
+      ) : page === "zhonghe" ? (
         <section className="zhonghe-page">
-          <ZhongheFood
+          <Ranking
             restaurants={zhongheRestaurants}
+            vote={vote}
             edit={setEditing}
             showDetail={setDetail}
+            busy={busy || offline}
+            currentVoter={currentVoter}
+            chooseVoter={requestIdentity}
+            expanded={zhongheRankingExpanded}
+            setExpanded={setZhongheRankingExpanded}
+            title="中窩美食排行榜"
+            kicker="ZHONGHE LEADERBOARD"
+          />
+        </section>
+      ) : (
+        <section className="add-page">
+          <QuickAdd
+            {...{ mapLink, setMapLink, addFromMap }}
             busy={busy || offline}
           />
         </section>

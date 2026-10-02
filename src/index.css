@@ -76,6 +76,9 @@
 }
 
 /* Apple-style top navigation */
+html .app-shell {
+  padding-top: calc(88px + env(safe-area-inset-top));
+}
 html .app-nav {
   position: fixed;
   top: 0;
@@ -171,7 +174,7 @@ html .app-menu {
   box-shadow: none;
   backdrop-filter: saturate(180%) blur(20px);
   -webkit-backdrop-filter: saturate(180%) blur(20px);
-  animation: apple-menu-drop 300ms cubic-bezier(0.32, 0.72, 0, 1);
+  animation: apple-menu-drop 420ms cubic-bezier(0.32, 0.72, 0, 1);
   transform-origin: top;
 }
 html .app-menu button {
@@ -1970,12 +1973,26 @@ footer {
 .restaurant-status-row .last-eaten {
   min-width: 0;
   flex: 1;
+  width: max-content;
+  white-space: nowrap;
 }
 .restaurant-status-row .vote-buttons {
   flex: 0 0 auto;
 }
 .restaurant-status-row .vote-buttons button {
   min-width: 76px;
+}
+.today-votes-only {
+  grid-template-columns: 1fr;
+}
+.add-page {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 680px);
+  margin-top: 24px;
+}
+.add-page .quick-add-panel {
+  min-height: 240px;
 }
 .ranking-toggle {
   display: block;
@@ -2007,6 +2024,9 @@ footer {
   .zhonghe-page {
     margin-top: 14px;
   }
+  .add-page {
+    margin-top: 14px;
+  }
   .zhonghe-panel {
     padding: 16px 13px;
   }
@@ -2030,6 +2050,7 @@ footer {
   .restaurant-status-row .last-eaten {
     padding-inline: 6px;
     font-size: 0.62rem;
+    white-space: nowrap;
   }
   .restaurant-status-row .vote-buttons button {
     min-width: 70px;
