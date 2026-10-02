@@ -1974,6 +1974,13 @@ footer {
   height: 34px;
   min-height: 34px;
   padding-block: 0;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 12px;
+}
+.ranking-panel .restaurant-status-row .last-eaten.never-eaten {
+  width: 76px;
+  min-width: 76px;
+  justify-content: center;
 }
 .restaurant-status-row .last-eaten {
   min-width: 0;
@@ -2056,6 +2063,10 @@ footer {
     padding-inline: 6px;
     font-size: 0.62rem;
     white-space: nowrap;
+  }
+  .ranking-panel .restaurant-status-row .last-eaten.never-eaten {
+    width: 70px;
+    min-width: 70px;
   }
   .restaurant-status-row .vote-buttons button {
     min-width: 70px;

@@ -233,7 +233,7 @@ function Ranking({
                   <small>{x.votes} 票</small>
                   <div className="restaurant-status-row">
                     <span
-                      className={`last-eaten ${x.daysSinceEaten === 0 ? "today" : ""}`}
+                      className={`last-eaten ${x.daysSinceEaten == null ? "never-eaten" : x.daysSinceEaten === 0 ? "today" : ""}`}
                     >
                       <History size={13} /> {lastEatenText(x)}
                     </span>
