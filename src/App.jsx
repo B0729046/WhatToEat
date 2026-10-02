@@ -74,7 +74,7 @@ function QuickAdd({ mapLink, setMapLink, addFromMap, busy }) {
     <div className="panel quick-add-panel">
       <h2>
         <MapPin size={20} />
-        新增餐廳
+        加點好吃的進去吧
       </h2>
       <p className="panel-help">
         貼上 Google Maps 餐廳連結，自動取得名稱並加入共享清單。
@@ -343,7 +343,7 @@ function DiningHistory({ diningHistory, editMeal, addMeal, busy }) {
     <div className="panel dining-history-panel">
       <div className="history-heading">
         <h2>
-          <CalendarDays size={20} /> 用餐歷史
+          <CalendarDays size={20} /> 最近吃過什麼
         </h2>
         <button
           className="history-add-button"

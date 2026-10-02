@@ -1970,6 +1970,11 @@ footer {
 .ranking-panel .restaurant-status-row .vote-buttons {
   margin-top: 0;
 }
+.ranking-panel .restaurant-status-row .last-eaten {
+  height: 34px;
+  min-height: 34px;
+  padding-block: 0;
+}
 .restaurant-status-row .last-eaten {
   min-width: 0;
   flex: 1;
@@ -2055,6 +2060,24 @@ footer {
   .restaurant-status-row .vote-buttons button {
     min-width: 70px;
     font-size: 0.72rem;
+  }
+  html .dining-history-row {
+    width: 100%;
+    grid-template-columns: 72px minmax(0, 1fr) auto;
+    gap: 6px;
+    padding: 10px;
+  }
+  html .dining-history-row strong {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  html .dining-history-row > button {
+    width: auto;
+    min-width: 58px;
+    padding: 7px 8px;
+    overflow: visible;
   }
 }
 
