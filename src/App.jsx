@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  Apple,
   CalendarDays,
   Check,
   ChevronDown,
@@ -21,6 +22,7 @@ import {
 import {
   DRAW_SCOPES,
   getDailyItalianLesson,
+  isZhongheRestaurant,
   rankRestaurants,
   selectableRestaurants,
 } from "./selection.js";
@@ -323,6 +325,65 @@ function TodayVotes({ restaurants }) {
     </div>
   );
 }
+function ZhongheFood({ restaurants, edit, showDetail, busy }) {
+  return (
+    <div className="panel zhonghe-panel">
+      <div className="zhonghe-heading">
+        <div>
+          <span className="ranking-kicker">ZHONGHE FAVORITES</span>
+          <h2>
+            <MapPin size={22} /> 中窩美食
+          </h2>
+        </div>
+        <span>{restaurants.length} 間</span>
+      </div>
+      <p className="panel-help">
+        地區包含中和的餐廳會自動收進這裡，也會繼續保留在原本排行榜。
+      </p>
+      <div className="zhonghe-list">
+        {restaurants.length ? (
+          restaurants.map((restaurant) => (
+            <article className="zhonghe-row" key={restaurant.id}>
+              <div>
+                <strong>{restaurant.name}</strong>
+                <small>{restaurant.area || "中和區"}</small>
+              </div>
+              <div className="zhonghe-actions">
+                <button
+                  type="button"
+                  onClick={() => showDetail(restaurant)}
+                  aria-label={`查看 ${restaurant.name} 的詳細資訊`}
+                >
+                  <Info size={17} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => edit(restaurant)}
+                  disabled={busy}
+                  aria-label={`編輯 ${restaurant.name}`}
+                >
+                  <Settings size={17} />
+                </button>
+                {restaurant.mapUrl && (
+                  <a
+                    href={restaurant.mapUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    aria-label={`${restaurant.name} Google Maps`}
+                  >
+                    <MapPin size={17} />
+                  </a>
+                )}
+              </div>
+            </article>
+          ))
+        ) : (
+          <p className="muted">目前還沒有地區標示為中和的餐廳。</p>
+        )}
+      </div>
+    </div>
+  );
+}
 function DiningHistory({ diningHistory, editMeal, addMeal, busy }) {
   return (
     <div className="panel dining-history-panel">
@@ -355,9 +416,7 @@ function DiningHistory({ diningHistory, editMeal, addMeal, busy }) {
             </div>
           ))
         ) : (
-          <p className="muted">
-            每天結算後會自動記錄最高票餐廳，也可以手動新增紀錄。
-          </p>
+          <p className="muted">還沒有用餐紀錄，請用右上方按鈕手動新增。</p>
         )}
       </div>
     </div>
@@ -952,6 +1011,10 @@ export default function App() {
     () => selectableRestaurants(restaurants, filters, drawScope, ALL),
     [restaurants, filters, drawScope],
   );
+  const zhongheRestaurants = useMemo(
+    () => restaurants.filter(isZhongheRestaurant),
+    [restaurants],
+  );
   const italianLesson = useMemo(
     () => getDailyItalianLesson(new Date(now)),
     [now],
@@ -1137,48 +1200,74 @@ export default function App() {
       <div className="orb orb-two" />
       <nav className="app-nav" aria-label="主要選單">
         <button
-          className="menu-button"
-          onClick={() => setMenuOpen((open) => !open)}
-          aria-expanded={menuOpen}
+          className="home-button"
+          type="button"
+          onClick={() => {
+            setPage("home");
+            setMenuOpen(false);
+          }}
+          aria-label="回到今日投票首頁"
         >
-          {menuOpen ? <X size={19} /> : <Menu size={19} />}
-          選單
+          <Apple size={21} />
         </button>
-        {menuOpen && (
-          <div className="app-menu">
-            <button
-              className={page === "home" ? "active" : ""}
-              onClick={() => {
-                setPage("home");
-                setMenuOpen(false);
-              }}
-            >
-              <Trophy size={18} /> 今日投票
-            </button>
-            <button
-              className={page === "history" ? "active" : ""}
-              onClick={() => {
-                setPage("history");
-                setMenuOpen(false);
-              }}
-            >
-              <CalendarDays size={18} /> 用餐歷史
-            </button>
-            <button
-              onClick={() => {
-                setMenuOpen(false);
-                requestIdentity();
-              }}
-            >
-              <Settings size={18} /> 切換使用者
-            </button>
-          </div>
-        )}
+        <div className="menu-cluster">
+          <button
+            className="menu-button"
+            onClick={() => setMenuOpen((open) => !open)}
+            aria-expanded={menuOpen}
+          >
+            {menuOpen ? <X size={19} /> : <Menu size={19} />}
+            選單
+          </button>
+          {menuOpen && (
+            <div className="app-menu">
+              <button
+                className={page === "home" ? "active" : ""}
+                onClick={() => {
+                  setPage("home");
+                  setMenuOpen(false);
+                }}
+              >
+                <Trophy size={18} /> 今日投票
+              </button>
+              <button
+                className={page === "zhonghe" ? "active" : ""}
+                onClick={() => {
+                  setPage("zhonghe");
+                  setMenuOpen(false);
+                }}
+              >
+                <MapPin size={18} /> 中窩美食
+              </button>
+              <button
+                className={page === "history" ? "active" : ""}
+                onClick={() => {
+                  setPage("history");
+                  setMenuOpen(false);
+                }}
+              >
+                <CalendarDays size={18} /> 用餐歷史
+              </button>
+              <button
+                onClick={() => {
+                  setMenuOpen(false);
+                  requestIdentity();
+                }}
+              >
+                <Settings size={18} /> 切換使用者
+              </button>
+            </div>
+          )}
+        </div>
       </nav>
-      <section className={`hero ${page === "history" ? "history-hero" : ""}`}>
+      <section className={`hero ${page !== "home" ? "history-hero" : ""}`}>
         <h1>
-          {page === "history" ? (
-            "用餐歷史"
+          {page !== "home" ? (
+            page === "history" ? (
+              "用餐歷史"
+            ) : (
+              "中窩美食"
+            )
           ) : (
             <>
               今天吃什麼？
@@ -1308,12 +1397,21 @@ export default function App() {
             <TodayVotes restaurants={restaurants} />
           </section>
         </>
-      ) : (
+      ) : page === "history" ? (
         <section className="history-page">
           <DiningHistory
             diningHistory={diningHistory}
             editMeal={setEditingMeal}
             addMeal={() => setAddingMeal(true)}
+            busy={busy || offline}
+          />
+        </section>
+      ) : (
+        <section className="zhonghe-page">
+          <ZhongheFood
+            restaurants={zhongheRestaurants}
+            edit={setEditing}
+            showDetail={setDetail}
             busy={busy || offline}
           />
         </section>

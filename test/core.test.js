@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { createHmac } from "node:crypto";
 import test from "node:test";
 import { generateAiReply } from "../api/_ai.js";
+import finalizeHandler from "../api/finalize.js";
 import lineWebhookHandler from "../api/line-webhook.js";
 import {
   findDuplicateRestaurant,
@@ -9,6 +10,7 @@ import {
 } from "../api/state-logic.js";
 import {
   getDailyItalianLesson,
+  isZhongheRestaurant,
   rankRestaurants,
   selectableRestaurants,
 } from "../src/selection.js";
@@ -90,6 +92,19 @@ test("每日義大利文在同一個台北日期會保持一致", () => {
   assert.ok(morning.pronunciation);
   assert.ok(morning.examplePronunciation);
   assert.ok(morning.meaning);
+});
+
+test("中窩美食依地區自動收錄且不改動原清單", () => {
+  const input = [
+    { id: "z1", area: "新北市中和區" },
+    { id: "z2", area: "中和" },
+    { id: "t1", area: "台北市中山區" },
+  ];
+  assert.deepEqual(
+    input.filter(isZhongheRestaurant).map((item) => item.id),
+    ["z1", "z2"],
+  );
+  assert.equal(input.length, 3);
 });
 
 test("可偵測標準化 Maps URL 與名稱地區重複", () => {
@@ -182,5 +197,39 @@ test("LINE Webhook 可驗證簽章並接受空事件", async () => {
   } finally {
     if (originalSecret === undefined) delete process.env.LINE_CHANNEL_SECRET;
     else process.env.LINE_CHANNEL_SECRET = originalSecret;
+  }
+});
+
+test("舊結算端點不再寫入用餐紀錄", async () => {
+  const originalSecret = process.env.CRON_SECRET;
+  process.env.CRON_SECRET = "test-cron-secret";
+  let statusCode = 0;
+  let responseBody;
+  const response = {
+    status(code) {
+      statusCode = code;
+      return this;
+    },
+    json(body) {
+      responseBody = body;
+      return body;
+    },
+  };
+  try {
+    await finalizeHandler(
+      {
+        method: "GET",
+        headers: { authorization: "Bearer test-cron-secret" },
+      },
+      response,
+    );
+    assert.equal(statusCode, 200);
+    assert.deepEqual(responseBody, {
+      skipped: true,
+      reason: "meal-history-is-manual-only",
+    });
+  } finally {
+    if (originalSecret === undefined) delete process.env.CRON_SECRET;
+    else process.env.CRON_SECRET = originalSecret;
   }
 });

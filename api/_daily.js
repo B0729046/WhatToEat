@@ -243,7 +243,7 @@ export function battleText(status) {
     `\u4eca\u65e5\u9818\u5148\uff1a${leaders}`,
     `\u5a01\u5a01\u6295\u4e86 ${status.counts["\u5a01\u5a01"]} \u9593\uff0c\u5c0f\u8607\u8607\u6295\u4e86 ${status.counts["\u5c0f\u8607\u8607"]} \u9593`,
     `\u76ee\u524d\u6709 ${status.common} \u9593\u5171\u540c\u9078\u64c7`,
-    "\u6295\u7968\u5c07\u65bc\u4eca\u665a\u7d50\u7b97",
+    "\u7528\u9910\u7d00\u9304\u53ef\u5728\u7db2\u7ad9\u624b\u52d5\u65b0\u589e",
   ].join("\n");
 }
 
@@ -276,29 +276,6 @@ export async function sendScheduledReminder(phase) {
   return { sent, missing, phase };
 }
 
-export async function finalizePreviousDay() {
-  const day = taipeiDay(-1);
-  const { highestVotes, leaders } = await currentLeaders(day);
-  const existing = await redis("HGET", KEYS.meals, day);
-  if (existing)
-    return { day, winner: JSON.parse(existing), alreadyFinalized: true };
-  if (!leaders.length) return { day, winner: null, highestVotes };
-  const seed = [...day].reduce(
-    (total, character) => total + character.charCodeAt(0),
-    0,
-  );
-  const selected = leaders[seed % leaders.length];
-  const winner = {
-    restaurantId: selected.id,
-    name: selected.name,
-    createdAt: new Date().toISOString(),
-    finalizedBy: "daily-cron",
-    votes: highestVotes,
-  };
-  await redis("HSET", KEYS.meals, day, JSON.stringify(winner));
-  return { day, winner, highestVotes, tied: leaders.length };
-}
-
 export async function pushLineLeaders() {
   if (!isTaipeiWeekday()) return { skipped: true, reason: "weekend" };
   const targets = await lineTargets();
@@ -313,9 +290,9 @@ export async function pushLineLeaders() {
             `${index + 1}. ${item.name}\uff08${highestVotes} \u7968\uff1a${item.voters.join("\u3001")}\uff09`,
         ),
         "",
-        "23:59 \u5c07\u81ea\u52d5\u6c7a\u5b9a\u4eca\u65e5\u9910\u5ef3\u3002",
+        "\u524d\u5f80\u6295\u7968\uff1ahttps://what-to-eat-chi-pink.vercel.app/",
       ].join("\n")
-    : "\u{1f37d}\ufe0f 17:30 \u6295\u7968\u901f\u5831\n\u4eca\u5929\u76ee\u524d\u9084\u6c92\u6709\u4eba\u6295\u7968\u3002";
+    : "\u{1f37d}\ufe0f 17:30 \u6295\u7968\u901f\u5831\n\u4eca\u5929\u76ee\u524d\u9084\u6c92\u6709\u4eba\u6295\u7968\u3002\n\u524d\u5f80\u6295\u7968\uff1ahttps://what-to-eat-chi-pink.vercel.app/";
   const leader = leaders[0];
   let comment = "";
   if (leader?.daysSinceEaten != null && leader.daysSinceEaten <= 3)

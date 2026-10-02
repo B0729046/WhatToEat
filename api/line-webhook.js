@@ -42,6 +42,7 @@ const helpText = [
   "小葉葉｜可用功能",
   "「戰況」查看今日領先餐廳、雙方票數與共同選擇。",
   "「催票」提醒尚未投票的另一位。",
+  "投票網站：https://what-to-eat-chi-pink.vercel.app/",
 ].join("\n");
 
 async function handleEvent(event) {

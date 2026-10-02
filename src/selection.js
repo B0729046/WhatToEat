@@ -105,3 +105,7 @@ export function selectableRestaurants(restaurants, filters, scope, allValue) {
     );
   });
 }
+
+export function isZhongheRestaurant(restaurant) {
+  return /(?:新北市)?中和區|中和/.test(String(restaurant?.area || ""));
+}
