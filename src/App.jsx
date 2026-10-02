@@ -9,7 +9,6 @@ import {
   History,
   Info,
   MapPin,
-  Menu,
   Pencil,
   RotateCcw,
   Settings,
@@ -17,7 +16,6 @@ import {
   Trash2,
   Trophy,
   Utensils,
-  X,
 } from "lucide-react";
 import {
   DRAW_SCOPES,
@@ -958,6 +956,14 @@ export default function App() {
     editing || editingMeal || addingMeal || identityPickerOpen || detail,
   );
   useEffect(() => {
+    if (!menuOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [menuOpen]);
+  useEffect(() => {
     if (!modalOpen) return;
     const scrollY = window.scrollY;
     const previousFocus = document.activeElement;
@@ -1198,29 +1204,35 @@ export default function App() {
     <main className="app-shell">
       <div className="orb orb-one" />
       <div className="orb orb-two" />
-      <nav className="app-nav" aria-label="主要選單">
-        <button
-          className="home-button"
-          type="button"
-          onClick={() => {
-            setPage("home");
-            setMenuOpen(false);
-          }}
-          aria-label="回到今日投票首頁"
-        >
-          <Apple size={21} />
-        </button>
-        <div className="menu-cluster">
+      <nav
+        className={`app-nav ${menuOpen ? "menu-open" : ""}`}
+        aria-label="主要選單"
+      >
+        <div className="app-nav-inner">
+          <button
+            className="home-button"
+            type="button"
+            onClick={() => {
+              setPage("home");
+              setMenuOpen(false);
+            }}
+            aria-label="回到今日投票首頁"
+          >
+            <Apple size={21} />
+          </button>
           <button
             className="menu-button"
+            type="button"
             onClick={() => setMenuOpen((open) => !open)}
             aria-expanded={menuOpen}
+            aria-controls="main-menu"
+            aria-label={menuOpen ? "關閉選單" : "開啟選單"}
           >
-            {menuOpen ? <X size={19} /> : <Menu size={19} />}
-            選單
+            <span />
+            <span />
           </button>
           {menuOpen && (
-            <div className="app-menu">
+            <div className="app-menu" id="main-menu">
               <button
                 className={page === "home" ? "active" : ""}
                 onClick={() => {
