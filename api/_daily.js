@@ -30,6 +30,25 @@ export function isTaipeiWeekday() {
   return weekday >= 1 && weekday <= 5;
 }
 
+export function isTaipeiReportWindow(date = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Taipei",
+    weekday: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(date);
+  const value = Object.fromEntries(
+    parts.map((part) => [part.type, part.value]),
+  );
+  return (
+    !["Sat", "Sun"].includes(value.weekday) &&
+    Number(value.hour) === 17 &&
+    Number(value.minute) >= 25 &&
+    Number(value.minute) <= 45
+  );
+}
+
 export async function redis(...command) {
   if (!REST_URL || !REST_TOKEN)
     throw new Error(
@@ -277,7 +296,8 @@ export async function sendScheduledReminder(phase) {
 }
 
 export async function pushLineLeaders() {
-  if (!isTaipeiWeekday()) return { skipped: true, reason: "weekend" };
+  if (!isTaipeiReportWindow())
+    return { skipped: true, reason: "outside-17:30-window" };
   const targets = await lineTargets();
   if (!targets.length)
     return { skipped: true, reason: "no-subscribers", subscribers: 0 };

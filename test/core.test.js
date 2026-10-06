@@ -4,6 +4,7 @@ import test from "node:test";
 import { generateAiReply } from "../api/_ai.js";
 import finalizeHandler from "../api/finalize.js";
 import lineWebhookHandler from "../api/line-webhook.js";
+import { isTaipeiReportWindow } from "../api/_daily.js";
 import {
   findDuplicateRestaurant,
   mealDateConflict,
@@ -232,4 +233,23 @@ test("舊結算端點不再寫入用餐紀錄", async () => {
     if (originalSecret === undefined) delete process.env.CRON_SECRET;
     else process.env.CRON_SECRET = originalSecret;
   }
+});
+
+test("LINE 速報只允許平日台北時間 17:30 左右發送", () => {
+  assert.equal(
+    isTaipeiReportWindow(new Date("2026-10-06T17:30:00+08:00")),
+    true,
+  );
+  assert.equal(
+    isTaipeiReportWindow(new Date("2026-10-06T17:00:00+08:00")),
+    false,
+  );
+  assert.equal(
+    isTaipeiReportWindow(new Date("2026-10-07T00:30:00+08:00")),
+    false,
+  );
+  assert.equal(
+    isTaipeiReportWindow(new Date("2026-10-10T17:30:00+08:00")),
+    false,
+  );
 });
