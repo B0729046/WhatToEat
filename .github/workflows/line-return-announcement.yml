@@ -16,9 +16,16 @@ jobs:
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
-          sleep 30
-          curl --fail-with-body --silent --show-error \
-            --retry 12 --retry-delay 10 --retry-all-errors \
+          sleep 15
+          HTTP_CODE=$(curl --silent --show-error \
+            --output response.json --write-out "%{http_code}" \
             -X POST \
             -H "Authorization: Bearer $CRON_SECRET" \
             "https://what-to-eat-chi-pink.vercel.app/api/announce-return"
+          )
+          RESPONSE=$(cat response.json)
+          echo "HTTP $HTTP_CODE: $RESPONSE"
+          if [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 300 ]; then
+            echo "::error title=LINE announcement failed::HTTP $HTTP_CODE: $RESPONSE"
+            exit 1
+          fi
