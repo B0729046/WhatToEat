@@ -44,8 +44,8 @@ export function isTaipeiReportWindow(date = new Date()) {
   return (
     !["Sat", "Sun"].includes(value.weekday) &&
     Number(value.hour) === 17 &&
-    Number(value.minute) >= 25 &&
-    Number(value.minute) <= 45
+    Number(value.minute) >= 5 &&
+    Number(value.minute) <= 25
   );
 }
 
@@ -297,14 +297,14 @@ export async function sendScheduledReminder(phase) {
 
 export async function pushLineLeaders() {
   if (!isTaipeiReportWindow())
-    return { skipped: true, reason: "outside-17:30-window" };
+    return { skipped: true, reason: "outside-17:10-window" };
   const targets = await lineTargets();
   if (!targets.length)
     return { skipped: true, reason: "no-subscribers", subscribers: 0 };
   const { day, highestVotes, leaders } = await currentLeaders();
   const text = leaders.length
     ? [
-        "\u{1f37d}\ufe0f 17:30 \u6295\u7968\u901f\u5831",
+        "\u{1f37d}\ufe0f 17:10 \u6295\u7968\u901f\u5831",
         ...leaders.map(
           (item, index) =>
             `${index + 1}. ${item.name}\uff08${highestVotes} \u7968\uff1a${item.voters.join("\u3001")}\uff09`,
@@ -312,7 +312,7 @@ export async function pushLineLeaders() {
         "",
         "\u524d\u5f80\u6295\u7968\uff1ahttps://what-to-eat-chi-pink.vercel.app/",
       ].join("\n")
-    : "\u{1f37d}\ufe0f 17:30 \u6295\u7968\u901f\u5831\n\u4eca\u5929\u76ee\u524d\u9084\u6c92\u6709\u4eba\u6295\u7968\u3002\n\u524d\u5f80\u6295\u7968\uff1ahttps://what-to-eat-chi-pink.vercel.app/";
+    : "\u{1f37d}\ufe0f 17:10 \u6295\u7968\u901f\u5831\n\u4eca\u5929\u76ee\u524d\u9084\u6c92\u6709\u4eba\u6295\u7968\u3002\n\u524d\u5f80\u6295\u7968\uff1ahttps://what-to-eat-chi-pink.vercel.app/";
   const leader = leaders[0];
   let comment = "";
   if (leader?.daysSinceEaten != null && leader.daysSinceEaten <= 3)

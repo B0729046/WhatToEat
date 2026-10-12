@@ -53,7 +53,7 @@ async function handleEvent(event) {
     if (event.replyToken)
       await replyLineMessage(
         event.replyToken,
-        `已訂閱「吃什麼勒」，每天 17:30 左右會收到投票速報。\n\n${helpText}`,
+        `已訂閱「吃什麼勒」，平日 17:10 左右會收到投票速報。\n\n${helpText}`,
       );
     return;
   }
@@ -80,7 +80,7 @@ async function handleEvent(event) {
     await subscribeLineTarget(target);
     await replyLineMessage(
       event.replyToken,
-      `訂閱成功！每天 17:30 左右會收到目前最高票餐廳。\n\n${helpText}`,
+      `訂閱成功！平日 17:10 左右會收到目前最高票餐廳。\n\n${helpText}`,
     );
   } else if (command === "\u53d6\u6d88\u8a02\u95b1") {
     await unsubscribeLineTarget(target);

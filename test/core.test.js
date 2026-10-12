@@ -235,9 +235,9 @@ test("舊結算端點不再寫入用餐紀錄", async () => {
   }
 });
 
-test("LINE 速報只允許平日台北時間 17:30 左右發送", () => {
+test("LINE 速報只允許平日台北時間 17:10 左右發送", () => {
   assert.equal(
-    isTaipeiReportWindow(new Date("2026-10-06T17:30:00+08:00")),
+    isTaipeiReportWindow(new Date("2026-10-06T17:10:00+08:00")),
     true,
   );
   assert.equal(
@@ -245,11 +245,15 @@ test("LINE 速報只允許平日台北時間 17:30 左右發送", () => {
     false,
   );
   assert.equal(
+    isTaipeiReportWindow(new Date("2026-10-06T17:30:00+08:00")),
+    false,
+  );
+  assert.equal(
     isTaipeiReportWindow(new Date("2026-10-07T00:30:00+08:00")),
     false,
   );
   assert.equal(
-    isTaipeiReportWindow(new Date("2026-10-10T17:30:00+08:00")),
+    isTaipeiReportWindow(new Date("2026-10-10T17:10:00+08:00")),
     false,
   );
 });
