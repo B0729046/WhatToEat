@@ -95,6 +95,29 @@ test("每日義大利文在同一個台北日期會保持一致", () => {
   assert.ok(morning.meaning);
 });
 
+test("近期義大利文主題會完整輪替數字 1 到 10", () => {
+  const lessons = Array.from({ length: 10 }, (_, index) =>
+    getDailyItalianLesson(
+      new Date(Date.parse("2026-10-01T12:00:00+08:00") + index * 86400000),
+    ),
+  );
+  assert.deepEqual(
+    [...lessons.map((lesson) => lesson.italian)].sort(),
+    [
+      "cinque",
+      "dieci",
+      "due",
+      "nove",
+      "otto",
+      "quattro",
+      "sei",
+      "sette",
+      "tre",
+      "uno",
+    ].sort(),
+  );
+});
+
 test("中窩美食依地區自動收錄且不改動原清單", () => {
   const input = [
     { id: "z1", area: "新北市中和區" },

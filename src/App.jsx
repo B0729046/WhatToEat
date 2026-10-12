@@ -1275,8 +1275,8 @@ export default function App() {
           )}
         </h1>
         {page === "home" && (
-          <div className="italian-lesson" aria-label="每日一句義大利文">
-            <span>每日一句義大利文</span>
+          <div className="italian-lesson" aria-label="義大利文數字教學">
+            <span>近期主題・數字 1～10</span>
             <strong>
               {italianLesson.chinese}（{italianLesson.italian}）
             </strong>
