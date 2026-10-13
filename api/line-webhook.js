@@ -11,6 +11,7 @@ import {
   subscribeLineTarget,
   todayVoteStatus,
   unsubscribeLineTarget,
+  voteDetailsText,
 } from "./_daily.js";
 
 export const config = { api: { bodyParser: false } };
@@ -100,6 +101,14 @@ async function handleEvent(event) {
     await replyLineMessage(
       event.replyToken,
       battleText(await todayVoteStatus()),
+    );
+  } else if (
+    command.includes("共同") ||
+    /(?:投了|選了).*(?:哪|什麼)|(?:哪|什麼).*(?:投票|選擇|餐廳)/.test(command)
+  ) {
+    await replyLineMessage(
+      event.replyToken,
+      voteDetailsText(await todayVoteStatus()),
     );
   } else if (command === "\u50ac\u7968") {
     const identity = await lineIdentity(target);

@@ -254,6 +254,23 @@ export async function todayVoteStatus() {
   return { ...state, counts, common };
 }
 
+export function voteDetailsText(status) {
+  const picks = (user) =>
+    status.restaurants
+      .filter((item) => item.voters.includes(user))
+      .map((item) => item.name);
+  const common = status.restaurants
+    .filter((item) => item.voters.length === USERS.length)
+    .map((item) => item.name);
+  const display = (items) => (items.length ? items.join("、") : "尚未投票");
+  return [
+    "今日投票明細",
+    `威威：${display(picks("威威"))}`,
+    `小蘇蘇：${display(picks("小蘇蘇"))}`,
+    `共同選擇：${common.length ? common.join("、") : "目前沒有"}`,
+  ].join("\n");
+}
+
 export function battleText(status) {
   const leaders = status.leaders.length
     ? status.leaders.map((item) => item.name).join("\u3001")
@@ -261,7 +278,14 @@ export function battleText(status) {
   return [
     `\u4eca\u65e5\u9818\u5148\uff1a${leaders}`,
     `\u5a01\u5a01\u6295\u4e86 ${status.counts["\u5a01\u5a01"]} \u9593\uff0c\u5c0f\u8607\u8607\u6295\u4e86 ${status.counts["\u5c0f\u8607\u8607"]} \u9593`,
-    `\u76ee\u524d\u6709 ${status.common} \u9593\u5171\u540c\u9078\u64c7`,
+    `共同選擇：${
+      status.common
+        ? status.restaurants
+            .filter((item) => item.voters.length === USERS.length)
+            .map((item) => item.name)
+            .join("、")
+        : "目前沒有"
+    }`,
     "\u7528\u9910\u7d00\u9304\u53ef\u5728\u7db2\u7ad9\u624b\u52d5\u65b0\u589e",
   ].join("\n");
 }

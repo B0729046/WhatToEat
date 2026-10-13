@@ -4,7 +4,7 @@ import test from "node:test";
 import { generateAiReply } from "../api/_ai.js";
 import finalizeHandler from "../api/finalize.js";
 import lineWebhookHandler from "../api/line-webhook.js";
-import { isTaipeiReportWindow } from "../api/_daily.js";
+import { isTaipeiReportWindow, voteDetailsText } from "../api/_daily.js";
 import {
   findDuplicateRestaurant,
   mealDateConflict,
@@ -279,4 +279,19 @@ test("LINE 速報只允許平日台北時間 17:10 左右發送", () => {
     isTaipeiReportWindow(new Date("2026-10-10T17:10:00+08:00")),
     false,
   );
+});
+
+test("LINE 投票明細使用真實餐廳與共同選擇", () => {
+  const text = voteDetailsText({
+    restaurants: [
+      { name: "壽司店", voters: ["威威", "小蘇蘇"] },
+      { name: "咖哩店", voters: ["小蘇蘇"] },
+      { name: "麵店", voters: [] },
+    ],
+  });
+
+  assert.match(text, /威威：壽司店/);
+  assert.match(text, /小蘇蘇：壽司店、咖哩店/);
+  assert.match(text, /共同選擇：壽司店/);
+  assert.doesNotMatch(text, /麵店/);
 });
