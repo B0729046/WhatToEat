@@ -41,6 +41,14 @@ function initialPage() {
   }
   return "home";
 }
+function taipeiToday() {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Taipei",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+}
 function Filter({ label, value, options, onChange }) {
   return (
     <label className="filter-group">
@@ -151,6 +159,7 @@ function Ranking({
   vote,
   edit,
   showDetail,
+  confirmMeal,
   busy,
   currentVoter,
   chooseVoter,
@@ -172,7 +181,7 @@ function Ranking({
         </div>
         <div className="ranking-summary">
           <span className="ranking-total">{restaurants.length} 間候選</span>
-          <small>長按或點資訊查看詳細</small>
+          <small>長按決定今天吃這間，點資訊查看詳細</small>
         </div>
       </div>
       <div className="restaurant-list">
@@ -191,7 +200,7 @@ function Ranking({
                   card.dataset.startY = e.clientY;
                   card.dataset.timer = setTimeout(() => {
                     card.dataset.held = "true";
-                    showDetail(x);
+                    confirmMeal(x);
                   }, 500);
                 }}
                 onPointerMove={(e) => {
@@ -377,12 +386,7 @@ function DiningHistory({ diningHistory, editMeal, addMeal, busy }) {
   );
 }
 function AddMealEditor({ restaurants, save, close, busy }) {
-  const today = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Taipei",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date());
+  const today = taipeiToday();
   const [date, setDate] = useState(today);
   const [restaurantId, setRestaurantId] = useState(restaurants[0]?.id || "");
   return (
@@ -581,6 +585,40 @@ function DetailModal({ restaurant, close }) {
         <button className="secondary-button" onClick={close}>
           關閉
         </button>
+      </div>
+    </div>
+  );
+}
+function ConfirmMealModal({ restaurant, confirm, close, busy }) {
+  return (
+    <div
+      className="modal-backdrop"
+      onMouseDown={(event) => event.target === event.currentTarget && close()}
+    >
+      <div
+        className="edit-modal confirm-meal-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="confirm-meal-title"
+        tabIndex="-1"
+      >
+        <span className="ranking-kicker">TODAY'S CHOICE</span>
+        <h2 id="confirm-meal-title">今天吃這間？</h2>
+        <strong>{restaurant.name}</strong>
+        <p>確認後會新增到今天的用餐紀錄。</p>
+        <div className="confirm-meal-actions">
+          <button type="button" onClick={close} disabled={busy}>
+            否
+          </button>
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={() => confirm(restaurant)}
+            disabled={busy}
+          >
+            {busy ? "記錄中…" : "是"}
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -827,6 +865,7 @@ export default function App() {
     [drawScope, setDrawScope] = useState("all"),
     [offline, setOffline] = useState(false),
     [detail, setDetail] = useState(null),
+    [confirmingMeal, setConfirmingMeal] = useState(null),
     [toast, setToast] = useState(null),
     [error, setError] = useState(""),
     [message, setMessage] = useState("把選擇困難交給宇宙。");
@@ -910,7 +949,12 @@ export default function App() {
     };
   }, [load]);
   const modalOpen = Boolean(
-    editing || editingMeal || addingMeal || identityPickerOpen || detail,
+    editing ||
+      editingMeal ||
+      addingMeal ||
+      identityPickerOpen ||
+      detail ||
+      confirmingMeal,
   );
   useEffect(() => {
     if (!menuOpen) return;
@@ -967,6 +1011,7 @@ export default function App() {
       setIdentityPickerOpen(false);
       setPendingVote(null);
       setDetail(null);
+      setConfirmingMeal(null);
     };
     document.addEventListener("keydown", closeModal);
     return () => {
@@ -1168,6 +1213,22 @@ export default function App() {
       setMessage("用餐紀錄已新增。");
     }
   };
+  const confirmTodayMeal = async (restaurant) => {
+    if (
+      await mutate(
+        {
+          action: "addMeal",
+          date: taipeiToday(),
+          restaurantId: restaurant.id,
+        },
+        "今天的用餐紀錄新增失敗",
+      )
+    ) {
+      setConfirmingMeal(null);
+      setMessage(`今天決定吃 ${restaurant.name}。`);
+      showToast(`已記錄今天吃「${restaurant.name}」`);
+    }
+  };
   const removeMeal = async (meal) => {
     if (!confirm(`確定刪除 ${meal.date} 的「${meal.name}」用餐紀錄？`)) return;
     if (await mutate({ action: "deleteMeal", date: meal.date })) {
@@ -1317,6 +1378,7 @@ export default function App() {
               vote={vote}
               edit={setEditing}
               showDetail={setDetail}
+              confirmMeal={setConfirmingMeal}
               busy={busy || offline}
               currentVoter={currentVoter}
               chooseVoter={requestIdentity}
@@ -1407,6 +1469,7 @@ export default function App() {
             vote={vote}
             edit={setEditing}
             showDetail={setDetail}
+            confirmMeal={setConfirmingMeal}
             busy={busy || offline}
             currentVoter={currentVoter}
             chooseVoter={requestIdentity}
@@ -1464,6 +1527,14 @@ export default function App() {
       )}
       {detail && (
         <DetailModal restaurant={detail} close={() => setDetail(null)} />
+      )}
+      {confirmingMeal && (
+        <ConfirmMealModal
+          restaurant={confirmingMeal}
+          confirm={confirmTodayMeal}
+          close={() => setConfirmingMeal(null)}
+          busy={busy || offline}
+        />
       )}
       <footer>WHAT TO EAT · 所有人共享同一份名單與票數</footer>
     </main>

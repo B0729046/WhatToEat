@@ -1428,6 +1428,45 @@ h1 {
   margin: 0;
   color: #fff4e6;
 }
+.confirm-meal-modal {
+  max-width: 380px;
+  text-align: center;
+}
+.confirm-meal-modal > strong {
+  display: block;
+  margin: 14px 0 8px;
+  color: #fff4e6;
+  font-size: 1.15rem;
+}
+.confirm-meal-modal > p {
+  margin: 0;
+  color: #a99b91;
+}
+.confirm-meal-actions {
+  display: grid;
+  grid-template-columns: 1fr 1.35fr;
+  gap: 10px;
+  margin-top: 24px;
+}
+.confirm-meal-actions button {
+  min-height: 46px;
+  border: 0;
+  border-radius: 12px;
+  color: #ddd0c5;
+  background: rgba(255, 255, 255, 0.08);
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+.confirm-meal-actions .secondary-button {
+  margin: 0;
+  color: #241408;
+  background: linear-gradient(105deg, #fed7aa, #fbbf24);
+}
+.confirm-meal-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
 @media (max-width: 680px) {
   .dining-history-row {
     grid-template-columns: 95px 1fr auto;
