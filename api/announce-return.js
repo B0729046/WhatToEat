@@ -6,8 +6,8 @@ import {
   subscriberTargets,
 } from "./_daily.js";
 
-const MARKER = "whattoeat:message:leafy-returned:2026-10-12";
-const MESSAGE = "小葉葉回來啦";
+const MARKER = "whattoeat:message:hello:2026-10-20";
+const MESSAGE = "你好";
 
 export default async function handler(req, res) {
   if (req.method !== "POST")
