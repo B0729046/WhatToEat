@@ -269,6 +269,10 @@ test("LINE 速報只允許平日台北時間 17:10 左右發送", () => {
   );
   assert.equal(
     isTaipeiReportWindow(new Date("2026-10-06T17:30:00+08:00")),
+    true,
+  );
+  assert.equal(
+    isTaipeiReportWindow(new Date("2026-10-06T18:00:00+08:00")),
     false,
   );
   assert.equal(

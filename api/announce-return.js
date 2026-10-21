@@ -6,8 +6,8 @@ import {
   subscriberTargets,
 } from "./_daily.js";
 
-const MARKER = "whattoeat:message:hello:2026-10-20";
-const MESSAGE = "你好";
+const MARKER = "whattoeat:message:report-fixed:2026-10-21";
+const MESSAGE = "小葉葉已完成問題排查，平日 17:10 投票速報已恢復。";
 
 export default async function handler(req, res) {
   if (req.method !== "POST")

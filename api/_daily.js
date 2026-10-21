@@ -44,8 +44,7 @@ export function isTaipeiReportWindow(date = new Date()) {
   return (
     !["Sat", "Sun"].includes(value.weekday) &&
     Number(value.hour) === 17 &&
-    Number(value.minute) >= 5 &&
-    Number(value.minute) <= 25
+    Number(value.minute) >= 5
   );
 }
 
@@ -326,6 +325,9 @@ export async function pushLineLeaders() {
   if (!targets.length)
     return { skipped: true, reason: "no-subscribers", subscribers: 0 };
   const { day, highestVotes, leaders } = await currentLeaders();
+  const marker = `whattoeat:report:${day}:17:10`;
+  const firstRun = await redis("SET", marker, "sending", "NX", "EX", 172800);
+  if (firstRun !== "OK") return { skipped: true, reason: "already-sent", day };
   const text = leaders.length
     ? [
         "\u{1f37d}\ufe0f 17:10 \u6295\u7968\u901f\u5831",
@@ -343,11 +345,17 @@ export async function pushLineLeaders() {
     comment = `\n\n${leader.name}最近 ${leader.daysSinceEaten} 天內吃過。`;
   else if (leader?.daysSinceEaten >= 30)
     comment = `\n\n${leader.name}已經 ${leader.daysSinceEaten} 天沒吃了。`;
-  await pushLineText(text + comment, targets);
-  return {
-    day,
-    leaders: leaders.map((item) => item.name),
-    highestVotes,
-    subscribers: targets.length,
-  };
+  try {
+    await pushLineText(text + comment, targets);
+    await redis("SET", marker, "sent", "EX", 172800);
+    return {
+      day,
+      leaders: leaders.map((item) => item.name),
+      highestVotes,
+      subscribers: targets.length,
+    };
+  } catch (error) {
+    await redis("DEL", marker);
+    throw error;
+  }
 }

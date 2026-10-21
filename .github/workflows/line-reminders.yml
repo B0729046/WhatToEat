@@ -14,5 +14,6 @@ jobs:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
           curl --fail-with-body --silent --show-error \
+            --retry 3 --retry-delay 10 --retry-all-errors \
             -H "Authorization: Bearer $CRON_SECRET" \
             "https://what-to-eat-chi-pink.vercel.app/api/notify"
