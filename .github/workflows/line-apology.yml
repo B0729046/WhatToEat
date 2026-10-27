@@ -1,11 +1,6 @@
 name: Send one-time LINE apology
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "api/apologize.js"
-      - ".github/workflows/line-apology.yml"
   workflow_dispatch:
 
 jobs:
