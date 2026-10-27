@@ -27,10 +27,10 @@
 
 # LINE 投票速報
 
-GitHub Actions 會執行下列排程：
+Vercel Cron 會執行下列排程：
 
-- 週一至週五台北時間 17:10 呼叫 `/api/notify`，透過 LINE Messaging API 推播目前最高票。
-- API 另有 17:05～17:25 的台北時間檢查；排程若延遲到其他時段只會略過，不會在凌晨補送。
+- 每天 UTC 09:10（台北時間 17:10）呼叫 `/api/notify`，透過 LINE Messaging API 推播目前最高票。
+- Vercel Hobby 排程可能在 17 點這一小時內執行；API 只接受平日 17:05～17:59，週末與其他時段會略過。
 - 用餐紀錄不會由排程自動建立，請在網站的「用餐歷史」手動新增。
 
 請在 Vercel 設定以下環境變數：
@@ -50,7 +50,7 @@ LINE Notify 已停止服務，本專案改用 LINE Official Account 的 Messagin
 
 兩位使用者各自傳送「我是威威」或「我是小蘇蘇」完成身分綁定。傳送「催票」會提醒尚未投票的另一位，傳送「戰況」會即時回覆目前領先、各自票數與共同選擇。
 
-17:10 投票速報只會在週一至週五推播。週末仍可手動投票與使用 LINE 指令。請在 GitHub repository 的 Settings > Secrets and variables > Actions 新增名為 `CRON_SECRET` 的 Repository secret，值需與 Vercel 的 `CRON_SECRET` 完全相同。
+投票速報只會在週一至週五的台北時間 17 點推播。週末仍可手動投票與使用 LINE 指令。Vercel 會自動使用專案環境變數 `CRON_SECRET` 驗證排程請求。
 
 ## Gemini 閒聊
 

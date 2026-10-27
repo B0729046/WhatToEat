@@ -1,8 +1,6 @@
 name: LINE 17:10 vote report
 
 on:
-  schedule:
-    - cron: "10 9 * * 1-5"
   workflow_dispatch:
 
 jobs:

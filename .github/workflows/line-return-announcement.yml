@@ -16,7 +16,20 @@ jobs:
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
-          sleep 30
+          READY=false
+          for ATTEMPT in $(seq 1 18); do
+            DEPLOYED=$(curl --silent --show-error \
+              "https://what-to-eat-chi-pink.vercel.app/api/deploy-version")
+            if echo "$DEPLOYED" | grep --quiet "$GITHUB_SHA"; then
+              READY=true
+              break
+            fi
+            sleep 10
+          done
+          if [ "$READY" != "true" ]; then
+            echo "::error title=Vercel deployment timeout::The production deployment did not reach $GITHUB_SHA"
+            exit 1
+          fi
           HTTP_CODE=$(curl --silent --show-error \
             --output response.json --write-out "%{http_code}" \
             -X POST \
