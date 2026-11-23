@@ -2,6 +2,12 @@ name: Send one-time LINE return announcement
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - api/announce-return.js
+      - .github/workflows/line-return-announcement.yml
 
 jobs:
   announce:
