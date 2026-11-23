@@ -285,7 +285,7 @@ html .app-menu button:hover {
 }
 .ranking-panel .restaurant-main {
   padding-left: 32px;
-  padding-right: 96px;
+  padding-right: 112px;
 }
 .ranking-panel .restaurant-main > strong {
   font-size: 0.94rem;
@@ -1774,11 +1774,19 @@ footer {
   position: absolute;
   top: 11px;
   right: 11px;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: repeat(3, 30px);
+  width: max-content;
+  max-width: none;
+  gap: 4px;
 }
 .ranking-panel .row-actions a,
 .ranking-panel .row-actions button {
-  width: 29px;
-  height: 29px;
+  width: 30px;
+  min-width: 30px;
+  height: 30px;
+  flex: none;
 }
 @media (min-width: 760px) {
   .ranking-panel .restaurant-list {
@@ -2093,7 +2101,7 @@ footer {
     font-size: 0.68rem;
   }
   .ranking-panel .restaurant-main {
-    padding-right: 102px;
+    padding-right: 112px;
   }
   .restaurant-status-row {
     gap: 5px;

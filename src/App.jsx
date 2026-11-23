@@ -130,6 +130,12 @@ function lastEatenText(x) {
   if (x.daysSinceEaten === 0) return "今天吃過";
   return `距離上次吃 ${x.daysSinceEaten} 天`;
 }
+function googleMapsHref(restaurant) {
+  const storedUrl = String(restaurant.mapUrl || "").trim();
+  if (storedUrl) return storedUrl;
+  const query = [restaurant.name, restaurant.area].filter(Boolean).join(" ");
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+}
 function visitText(visit, now) {
   if (!visit?.visitedAt) return "尚無稽查紀錄";
   const minutes = Math.max(
@@ -272,17 +278,15 @@ function Ranking({
                   >
                     <Settings size={17} />
                   </button>
-                  {x.mapUrl && (
-                    <a
-                      href={x.mapUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      aria-label={`${x.name} Google Maps`}
-                      onClick={(event) => event.stopPropagation()}
-                    >
-                      <MapPin size={17} />
-                    </a>
-                  )}
+                  <a
+                    href={googleMapsHref(x)}
+                    target="_blank"
+                    rel="noreferrer"
+                    aria-label={`在 Google Maps 查看 ${x.name}`}
+                    onClick={(event) => event.stopPropagation()}
+                  >
+                    <MapPin size={17} />
+                  </a>
                 </div>
               </div>
             );
