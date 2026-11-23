@@ -6,9 +6,8 @@ import {
   subscriberTargets,
 } from "./_daily.js";
 
-const MARKER = "whattoeat:message:vercel-cron-fixed:2026-10-27";
-const MESSAGE =
-  "小葉葉已完成問題排查，投票速報已改用 Vercel 排程，平日 17:10～17:59 會自動送出。";
+const MARKER = "whattoeat:message:android-map-fixed:2026-11-23";
+const MESSAGE = "地圖功能已修復，請再試試看。";
 
 export default async function handler(req, res) {
   if (req.method !== "POST")
