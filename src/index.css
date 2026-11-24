@@ -2139,6 +2139,19 @@ footer {
   }
 }
 
+@media (max-width: 480px) and (orientation: portrait) {
+  .ranking-panel .restaurant-main {
+    padding-right: 78px;
+  }
+  .ranking-panel .row-actions {
+    grid-template-columns: repeat(2, 30px);
+  }
+  .ranking-panel .row-actions a {
+    grid-column: 1 / -1;
+    width: 64px;
+  }
+}
+
 /* Daily beginner Italian */
 .hero-italian {
   display: block;
